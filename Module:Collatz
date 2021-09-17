@@ -1,0 +1,55 @@
+--[[
+	Module to obtain the Collatz Conjecture and format a graph
+	
+	License: Unlicense (public domain)
+--]]
+
+local p = {}
+
+local Template		= 'Graph:Chart' -- https://www.wikidata.org/wiki/Q20113709#sitelinks-wikipedia
+local StartLegend	= 'Start'
+
+function p.main(frame)
+	local start		= frame.args.start or 27
+	local width		= frame.args.width or 800	-- Graph width
+	local height	= frame.args.height or 600	-- Graph height
+	local Data		= {}
+	local Highest	= {}
+	local Tags		= {}
+    for num = 1,start,1 do
+    	local Values = Collatz(num)
+    	table.insert(Highest, #Values)
+    	table.insert(Data, '|y'..num..'=' .. Values)
+    	table.insert(Tags, '|y'..num..'Title=' .. num)
+    end
+    table.sort(Highest)
+    Tags	= table.concat(Tags)
+    Highest = Highest[#Highest]
+
+    local axisX = {}
+    for v = 0, Highest, 1 do
+    	table.insert(axisX, v)
+    end
+    axisX = table.concat(axisX, ',')
+    axisY = table.concat(Data)
+    
+	return frame:preprocess('{{' .. Template .. '|type=line|interpolate=monotone|width='.. width .. '|height='.. height .. '|x='.. axisX .. axisY .. '|legend=' .. StartLegend .. Tags .. '}}')
+end
+
+function Collatz(num)
+    if type(num) == 'number' then
+        local Values = {(math.floor(num))}
+        while(num > 1) do
+            if (num % 2 == 0) then
+                num = (num / 2)
+            else
+                num = (num * 3 + 1)
+            end
+            table.insert(Values, (math.floor(num)))
+          
+        end
+        return table.concat(Values, ',')
+    end
+end
+
+return p
