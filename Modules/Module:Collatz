@@ -10,30 +10,39 @@ local Template		= 'Graph:Chart' -- https://www.wikidata.org/wiki/Q20113709#sitel
 local StartLegend	= 'Start'
 
 function p.main(frame)
-	local start		= frame.args.start or 27
-	local width		= frame.args.width or 800	-- Graph width
-	local height	= frame.args.height or 600	-- Graph height
-	local Data		= {}
-	local Highest	= {}
-	local Tags		= {}
-    for num = 1,start,1 do
-    	local Values = Collatz(num)
-    	table.insert(Highest, #Values)
-    	table.insert(Data, '|y'..num..'=' .. Values)
-    	table.insert(Tags, '|y'..num..'Title=' .. num)
-    end
-    table.sort(Highest)
-    Tags	= table.concat(Tags)
-    Highest = Highest[#Highest]
+	local start		= tonumber(frame.args.start) or 27		-- Max start number
+	local width		= tonumber(frame.args.width) or 800		-- Graph width
+	local height	= tonumber(frame.args.height) or 600	-- Graph height
+	
+	if type(start) == 'number' then
+		if start < 1000 then -- More than 1000 will cause memory issues
+			local Data		= {}
+			local Highest	= {}
+			local Tags		= {}
+	
+			table.insert(Tags, '|legend=' .. StartLegend)
+		    for num = 1,start,1 do
+		    	local Values = Collatz(num)
+		    	table.insert(Highest, #Values)
+		    	table.insert(Data, '|y'..num..'=' .. Values)
+		    	table.insert(Tags, '|y'..num..'Title=' .. num)
+		    end
+		    table.sort(Highest)
+		    Highest = Highest[#Highest]
 
-    local axisX = {}
-    for v = 0, Highest, 1 do
-    	table.insert(axisX, v)
-    end
-    axisX = table.concat(axisX, ',')
-    axisY = table.concat(Data)
-    
-	return frame:preprocess('{{' .. Template .. '|type=line|interpolate=monotone|width='.. width .. '|height='.. height .. '|x='.. axisX .. axisY .. '|legend=' .. StartLegend .. Tags .. '}}')
+		    local axisX = {}
+		    for v = 0, Highest, 1 do
+		    	table.insert(axisX, v)
+		    end
+		    axisX = table.concat(axisX, ',')
+		    axisY = table.concat(Data)
+		    
+		    if #Tags > 40 then Tags = {} end
+		    Tags = table.concat(Tags)
+		    
+			return frame:preprocess('{{' .. Template .. '|type=line|interpolate=monotone|width='.. width .. '|height='.. height .. '|x='.. axisX .. axisY .. Tags .. '}}')
+		end
+	end
 end
 
 function Collatz(num)
