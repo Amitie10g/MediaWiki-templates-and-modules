@@ -10,12 +10,12 @@ local Template		= 'Graph:Chart' -- https://www.wikidata.org/wiki/Q20113709#sitel
 local StartLegend	= 'Start'
 
 function p.main(frame)
-	local MaxStart	= tonumber(frame.args.start) or 27		-- Max start number
-	local width		= tonumber(frame.args.width) or 800		-- Graph width
-	local height	= tonumber(frame.args.height) or 600	-- Graph height
+	local MaxStart	= math.floor(tonumber(frame.args.start)) or 27		-- Max start number
+	local width		= math.floor(tonumber(frame.args.width)) or 800		-- Graph width
+	local height	= math.floor(tonumber(frame.args.height)) or 600	-- Graph height
 	
 	if type(MaxStart) == 'number' then
-		if MaxStart < 1000 then -- More than 1000 will cause memory issues
+		if math.floor(MaxStart) < 1000 then -- More than 1000 will cause memory issues
 			local Data		= {}
 			local Highest	= {}
 			local Tags		= {}
@@ -47,17 +47,19 @@ end
 
 function Collatz(num)
     if type(num) == 'number' then
-        local Values = {(math.floor(num))}
-        while(num > 1) do
-            if (num % 2 == 0) then
-                num = (num / 2)
-            else
-                num = (num * 3 + 1)
-            end
-            table.insert(Values, (math.floor(num)))
-          
-        end
-        return table.concat(Values, ',')
+    	if math.floor(num) > 0 then
+	        local Values = {(math.floor(num))}
+	        while(num > 1) do
+	            if (num % 2 == 0) then
+	                num = (num / 2)
+	            else
+	                num = (num * 3 + 1)
+	            end
+	            table.insert(Values, (math.floor(num)))
+	          
+	        end
+	        return table.concat(Values, ',')
+		end
     end
 end
 
