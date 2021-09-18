@@ -1,0 +1,815 @@
+--[[
+  Auxiliary module for Module:Ficha de taxón as a table with pairs of data.
+  
+  Target: any MediaWiki
+  Status: In development
+  License: Unlicense (public domain)
+]]
+
+return {
+	colores = {
+		["[[Animal]]"]				= '#D3D3A4',
+		["[[animal]]"]				= '#D3D3A4',
+		["[[animal]]ia"]			= '#D3D3A4',
+		["''[[Animalia]]''"]		= '#D3D3A4',
+		["[[Animalia]]"]			= '#D3D3A4',
+		["[[animalia]]"]			= '#D3D3A4',
+		["Animalia"]				= '#D3D3A4',
+		["animalia"]				= '#D3D3A4',
+		["<b>animalia</b>"]			= '#D3D3A4',
+		["'''animalia'''"]			= '#D3D3A4',
+		["Q729"]					= '#D3D3A4',
+		["Plantae"]					= '#90EE90',
+		["[[archaeplastida]]"]		= '#90EE90',
+		["''[[Plantae]]''"]			= '#90EE90',
+		["[[Plantae]]"]				= '#90EE90',
+		["[[plantae]]"]				= '#90EE90',
+		["Plantae"]					= '#90EE90',
+		["plantae"]					= '#90EE90',
+		["<b>plantae</b>"]			= '#90EE90',
+		["'''plantae'''"]			= '#90EE90',
+		["Q756"]					= '#90EE90',
+		["Fungi"]					= '#ADD8E6',
+		["''[[Fungi]]''"]			= '#ADD8E6',
+		["[[fungi]]"]				= '#ADD8E6',
+		["fungi"]					= '#ADD8E6',
+		["<b>fungi</b>"]			= '#ADD8E6',
+		["'''fungi'''"]				= '#ADD8E6',
+		["Q764"]					= '#ADD8E6',
+		["Bacteria"]				= '#DCDCDC',
+		["bacteria"]				= '#DCDCDC',
+		["''[[Bacteria]]''"]		= '#DCDCDC',
+		["[[Bacteria]]"]			= '#DCDCDC',
+		["[[bacteria]]"]			= '#DCDCDC',
+		["<b>bacteria</b>"]			= '#DCDCDC',
+		["'''bacteria'''"]			= '#DCDCDC',
+		["Q10876"]					= '#DCDCDC',
+		["Protista"]				= '#F0E68C',
+		["protista"]				= '#F0E68C',
+		["''[[Protista]]''"]		= '#F0E68C',
+		["[[Protista]]"]			= '#F0E68C',
+		["[[protista]]"]			= '#F0E68C',
+		["<b>protista</b>"]			= '#F0E68C',
+		["'''protista'''"]			= '#F0E68C',
+		["Q10892"]					= '#F0E68C',
+		["Archaea"]					= '#FFC0CA',
+		["archaea"]					= '#FFC0CA',
+		["''[[Archaea]]''"]			= '#FFC0CA',
+		["[[Archaea]]"]				= '#FFC0CA',
+		["[[archaea]]"]				= '#FFC0CA',
+		["<b>archaea</b>"]			= '#FFC0CA',
+		["'''archaea'''"]			= '#FFC0CA',
+		["Q10872"]					= '#FFC0CA',
+		["Incertae sedis"]			= '#FAF0E6',
+		["incertae sedis"]			= '#FAF0E6',
+		["''[[Incertae sedis]]''"]	= '#FAF0E6',
+		["[[Incertae sedis]]"]		= '#FAF0E6',
+		["[[incertae sedis]]"]		= '#FAF0E6',
+		["Q235536"]					= '#FAF0E6',
+		["Virus"]					= '#FD98FB',
+		["virus"]					= '#FD98FB',
+		["''[[Virus]]''"]			= '#FD98FB',
+		["[[Virus]]"]				= '#FD98FB',
+		["[[virus]]"]				= '#FD98FB',
+		["<b>virus</b>"]			= '#FD98FB',
+		["i"]						= '#FD98FB',
+		["ii"]						= '#FD98FB',
+		["iii"]						= '#FD98FB',
+		["iv"]						= '#FD98FB',
+		["v"]						= '#FD98FB',
+		["vi"]						= '#FD98FB',
+		["vii"]						= '#FD98FB',
+		["viii"]					= '#FD98FB',
+		["''[[Riboviria]]''"]		= '#FD98FB',
+		["[[Riboviria]]"]			= '#FD98FB',
+		["Riboviria"]				= '#FD98FB',
+		["Q808"]					= '#FD98FB',
+	},
+	estadoConservacionCods = {
+		['se']			= 'SE',
+		['secure']		= 'SE',
+		['dom']			= 'DOM',
+		['domesticated']= 'DOM',
+		['domesticado']	= 'DOM',
+		['q3245245']	= 'DD',
+		['dd']			= 'DD',
+		['q3350324']	= 'NE',
+		['ne']			= 'NE',
+		['nr']			= 'NR',
+		['lr']			= 'LR',
+		['q211005']		= 'LC',
+		['lc']			= 'LC',
+		['lr/lc']		= 'LRLC',
+		['lrlc']		= 'LRLC',
+		['q719675']		= 'NT',
+		['nt']			= 'NT',
+		['lr/nt']		= 'LRNT',
+		['lrnt']		= 'LRNT',
+		['lr/cd']		= 'LRCD',
+		['lrcd']		= 'LRCD',
+		['q278113']		= 'VU',
+		['vu']			= 'VU',
+		['q11394']		= 'EN',
+		['en']			= 'EN',
+		['q219127']		= 'CR',
+		['cr']			= 'CR',
+		['q85304919']	= 'PEW',
+		['pew']			= 'PEW',
+		['q239509']		= 'EW',
+		['EW']			= 'EW',
+		['ew']			= 'EW',
+		['q86748173']	= 'PE',
+		['pe']			= 'PE',
+		['q237350']		= 'EX',
+		['ex']			= 'EX',
+		['q40614']		= 'FOSIL',
+		['fossil']		= 'FOSIL',
+		['fósil']		= 'FOSIL',
+		['pre']			= 'PRE',
+		['uicn2.3']		= 'UICN2.3',
+		['iucn2.3']		= 'UICN2.3',
+		['uicn3.1']		= 'UICN3.1',
+		['iucn3.1']		= 'UICN3.1',
+		['natureserv']	= 'NATSERV',
+	},
+
+	fungi = {
+		['himenio'] = {
+			['láminas']		= {"Gills_icon.png", "con '''láminas'''"},
+			['laminas']		= {"Gills_icon.png", "con '''láminas'''"},
+			['gills']		= {"Gills_icon.png", "con '''láminas'''"},
+			['Q269345']		= {"Gills_icon.png", "con '''láminas'''"},
+	
+			['poros']		= {"Pores_icon.png", "con '''poros'''"},
+			['pores']		= {"Pores_icon.png", "con '''poros'''"},
+			['Q19861549']	= {"Pores_icon.png", "con '''poros'''"},
+	
+			['liso']		= {"Smooth_icon.png", "'''liso'''"},
+			['lisa']		= {"Smooth_icon.png", "'''liso'''"},
+			['smooth']		= {"Smooth_icon.png", "'''liso'''"},
+			['Q19861550']	= {"Smooth_icon.png", "'''liso'''"},
+	
+			['pliegues']	= {"Ridges_icon.png", "con '''pliegues'''"},
+			['ridges']		= {"Ridges_icon.png", "con '''pliegues'''"},
+			['Q19861551']	= {"Ridges_icon.png", "con '''pliegues'''"},
+	
+			['aguijones']	= {"Teeth_icon.png", "con '''aguijones'''"},
+			['teeth']		= {"Teeth_icon.png", "con '''aguijones'''"},
+			['Q19861552']	= {"Teeth_icon.png", "con '''aguijones'''"},
+	
+			['gleba']		= {"Gleba icon.png", "con '''pliegues'''"},
+			['Q2034230']	= {"Gleba icon.png", "con '''pliegues'''"},
+	
+			['default']			= {"NA_cap_icon.svg", "'''desconocida'''"},
+		},
+	
+		['sombrero'] = {
+			['campanulado']		= {"Campanulate cap icon.svg", "'''campanulado'''"},
+			['campanulate']		= {"Campanulate cap icon.svg", "'''campanulado'''"},
+			['Q19887953']		= {"Campanulate cap icon.svg", "'''campanulado'''"},
+	
+			['cónico']			= {"Conical_cap_icon.svg", "'''cónico'''"},
+			['conical']			= {"Conical_cap_icon.svg", "'''cónico'''"},
+			['Q19887954']		= {"Conical_cap_icon.svg", "'''cónico'''"},
+	
+			['convexo']			= {"Convex_cap_icon.svg", "'''convexo'''"},
+			['convex']			= {"Convex_cap_icon.svg", "'''convexo'''"},
+			['Q14544535']		= {"Convex_cap_icon.svg", "'''convexo'''"},
+	
+			['deprimido']		= {"Depressed_cap_icon.svg", "'''deprimido'''"},
+			['depressed']		= {"Depressed_cap_icon.svg", "'''deprimido'''"},
+			['Q19887955']		= {"Depressed_cap_icon.svg", "'''deprimido'''"},
+	
+			['aplanado']		= {"Flat_cap_icon.svg", "'''aplanado'''"},
+			['flat']			= {"Flat_cap_icon.svg", "'''aplanado'''"},
+			['Q19887957']		= {"Flat_cap_icon.svg", "'''aplanado'''"},
+	
+			['excéntrico']		= {"Offset_cap_icon.png", "'''descentrado'''"},
+			['descentrado']		= {"Offset_cap_icon.png", "'''descentrado'''"},
+			['offset']			= {"Offset_cap_icon.png", "'''descentrado'''"},
+			['Q14544541']		= {"Offset_cap_icon.png", "'''descentrado'''"},
+	
+			['embudado']		= {"Infundibuliform_cap_icon.svg", "'''embudado'''"},
+			['infundibuliform']	= {"Infundibuliform_cap_icon.svg", "'''embudado'''"},
+			['Q19887958']		= {"Infundibuliform_cap_icon.svg", "'''embudado'''"},
+	
+			['ovoide']			= {"Ovate_cap_icon.svg", "'''ovoide'''"},
+			['ovate']			= {"Ovate_cap_icon.svg", "'''ovoide'''"},
+			['Q19887961']		= {"Ovate_cap_icon.svg", "'''ovoide'''"},
+	
+			['umbilicado']		= {"Umbillicate_cap_icon.svg", "'''umbilicado'''"},
+			['umbillicate']		= {"Umbillicate_cap_icon.svg", "'''umbilicado'''"},
+			['Q19887962']		= {"Umbillicate_cap_icon.svg", "'''umbilicado'''"},
+	
+			['mamelonado']		= {"Umbonate_cap_icon.svg", "'''mamelonado'''"},
+			['umbonate']		= {"Umbonate_cap_icon.svg", "'''mamelonado'''"},
+			['Q19887964']		= {"Umbonate_cap_icon.svg", "'''mamelonado'''"},
+	
+			['no']				= {"No_cap_icon.svg", "'''no diferenciado'''"},
+			['sin píleo']		= {"No_cap_icon.svg", "'''no diferenciado'''"},
+			['Q19887965']		= {"No_cap_icon.svg", "'''no diferenciado'''"},
+	
+			['cóncavo']			= {"Cappello ondulato disegno.png", ""},
+			['cóncavo a plano']	= {"Cappello ondulato disegno.png", ""},
+			['concave']			= {"Cappello ondulato disegno.png", ""},
+			['Q23058598']		= {"Cappello ondulato disegno.png", ""},
+	
+			['semiesférico']	= {"Convex cap icon.svg", ""},
+			['semi-spherical']	= {"Convex cap icon.svg", ""},
+			['Q62023127']		= {"Convex cap icon.svg", ""},
+	
+			['default']			= {"NA_cap_icon.svg", "'''desconocido'''"},
+		},
+	
+		['láminas'] = {
+			['adnatas']			= {"Adnate_gills_icon2.png", "'''adnatas'''"},
+			['adnate']			= {"Adnate_gills_icon2.png", "'''adnatas'''"},
+			['Q14544569']		= {"Adnate_gills_icon2.png", "'''adnatas'''"},
+	
+			['panzudas']		= {"Adnexed gills icon2.svg", "'''panzudas'''"},
+			['ventrudas']		= {"Adnexed gills icon2.svg", "'''ventrudas'''"},
+			['adnexed']			= {"Adnexed gills icon2.svg", "'''ventrudas'''"},
+			['Q19887923']		= {"Adnexed gills icon2.svg", "'''ventrudas'''"},
+	
+			['decurrentes']		= {"Decorrenti_lamelle_icona.png", "'''decurrentes'''"},
+			['decurrent']		= {"Decorrenti_lamelle_icona.png", "'''decurrentes'''"},
+			['Q19887925']		= {"Decorrenti_lamelle_icona.png", "'''decurrentes'''"},
+	
+			['escotadas']		= {"Emarginate_gills_icon2.png", "'''escotadas'''"},
+			['emarginate']		= {"Emarginate_gills_icon2.png", "'''escotadas'''"},
+			['Q19887926']		= {"Emarginate_gills_icon2.png", "'''escotadas'''"},
+	
+			['libres']			= {"Free_gills_icon2.png", "'''libres'''"},
+			['free']			= {"Free_gills_icon2.png", "'''libres'''"},
+			['Q14544563']		= {"Free_gills_icon2.png", "'''libres'''"},
+	
+			['separadas']		= {"Seceding_gills_icon2.png", "'''separadas'''"},
+			['seceding']		= {"Seceding_gills_icon2.png", "'''separadas'''"},
+			['Q19887929']		= {"Seceding_gills_icon2.png", "'''separadas'''"},
+	
+			['sinuosas']		= {"Sinuate_gills_icon2.png", "'''sinuosas'''"},
+			['sinuate']			= {"Sinuate_gills_icon2.png", "'''sinuosas'''"},
+			['Q19887930']		= {"Sinuate_gills_icon2.png", "'''sinuosas'''"},
+	
+			['subdecurrentes']	= {"Subdecurrent_gills_icon2.png", "'''subdecurrentes'''"},
+			['subdecurrent']	= {"Subdecurrent_gills_icon2.png", "'''subdecurrentes'''"},
+			['Q19887931']		= {"Subdecurrent_gills_icon2.png", "'''subdecurrentes'''"},
+			
+			['no']				= {"No_gills_icon.png", ""},
+	
+			['ND']				= {"NA_gills_icon.svg", "'''desconocidas'''"},
+			['NA']				= {"NA_gills_icon.svg", "'''desconocidas'''"},
+			['sin láminas']		= {"NA_gills_icon.svg", "'''desconocidas'''"},
+			['Q19887932']		= {"NA_gills_icon.svg", "'''desconocidas'''"},
+	
+			['default']			= {"NA_cap_icon.svg", "'''desconocidas'''"},
+		},
+	
+		['velo'] = {
+			['desnudo']			= {"Bare_stipe_icon.png", "'''desnudo'''"},
+			['bare']			= {"Bare_stipe_icon.png", "'''desnudo'''"},
+			['Q14544581']		= {"Bare_stipe_icon.png", "'''desnudo'''"},
+	
+			['anillo']			= {"Ring_stipe_icon.png", "con '''anillo'''"},
+			['ring']			= {"Ring_stipe_icon.png", "con '''anillo'''"},
+			['Q14544582']		= {"Ring_stipe_icon.png", "con '''anillo'''"},
+	
+			['volva']			= {"Volva_stipe_icon.png", "con '''volva'''"},
+			['Q19887985']		= {"Volva_stipe_icon.png", "con '''volva'''"},
+	
+			['anillo y volva']	= {"Ring_and_volva_stipe_icon.png", "con '''anillo y volva'''"},
+			['ring and volva']	= {"Ring_and_volva_stipe_icon.png", "con '''anillo y volva'''"},
+			['Q19887987']		= {"Ring_and_volva_stipe_icon.png", "con '''anillo y volva'''"},
+	
+			['cortina']			= {"Cortina_stipe_icon.png", "con '''cortina'''"},
+			['Q19887988']		= {"Cortina_stipe_icon.png", "con '''cortina'''"},
+	
+			['ND']				= {"NA_stipe_icon.png", ""},
+			['NA']				= {"NA_stipe_icon.png", ""},
+			
+			['default']			= {"NA_cap_icon.svg", "elemento no aplicable"},
+		},
+	
+		['color_espora'] = {
+			['negro']			= {"Black_spore_print_icon.png", "'''negro'''"},
+			['black']			= {"Black_spore_print_icon.png", "'''negro'''"},
+			['Q23445']			= {"Black_spore_print_icon.png", "'''negro'''"},
+			['Q100331264']		= {"Black_spore_print_icon.png", "'''negro'''"},
+	
+			['blanco']			= {"White_spore_print_icon.png", "'''blanco'''"},
+			['white']			= {"White_spore_print_icon.png", "'''blanco'''"},
+			['Q23444']			= {"White_spore_print_icon.png", "'''blanco'''"},
+			['Q100331318']		= {"White_spore_print_icon.png", "'''blanco'''"},
+	
+			['aceituna']		= {"Olive_spore_print_icon.png", "'''aceituna'''"},
+			['verde oliva']		= {"Olive_spore_print_icon.png", "'''aceituna'''"},
+			['olive']			= {"Olive_spore_print_icon.png", "'''aceituna'''"},
+			['Q864152']			= {"Olive_spore_print_icon.png", "'''aceituna'''"},
+			['Q100331331']		= {"Olive_spore_print_icon.png", "'''aceituna'''"},
+	
+			['marrón']			= {"Brown_spore_print_icon.png", "'''marrón'''"},
+			['brown']			= {"Brown_spore_print_icon.png", "'''marrón'''"},
+			['Q47071']			= {"Brown_spore_print_icon.png", "'''marrón'''"},
+			['Q100331350']		= {"Brown_spore_print_icon.png", "'''marrón'''"},
+	
+			['amarillo']		= {"Yellow_spore_print_icon.png", "'''amarillo'''"},
+			['yellow']			= {"Yellow_spore_print_icon.png", "'''amarillo'''"},
+			['Q943']			= {"Yellow_spore_print_icon.png", "'''amarillo'''"},
+			['Q100331365']		= {"Yellow_spore_print_icon.png", "'''amarillo'''"},
+	
+			['rosa']			= {"Pink_spore_print_icon.png", "'''rosa'''"},
+			['pink']			= {"Pink_spore_print_icon.png", "'''rosa'''"},
+			['Q429220']			= {"Pink_spore_print_icon.png", "'''rosa'''"},
+			['Q100331376']		= {"Pink_spore_print_icon.png", "'''rosa'''"},
+	
+			['ocre']			= {"Ochre_spore_print_icon.png", "'''ocre'''"},
+			['ochre']			= {"Ochre_spore_print_icon.png", "'''ocre'''"},
+			['Q194191']			= {"Ochre_spore_print_icon.png", "'''ocre'''"},
+			['Q100331430']		= {"Ochre_spore_print_icon.png", "'''ocre'''"},
+	
+			['salmón']			= {"Salmon_spore_print_icon.png", "'''salmón'''"},
+			['salmon']			= {"Salmon_spore_print_icon.png", "'''salmón'''"},
+			['Q2015138']		= {"Salmon_spore_print_icon.png", "'''salmón'''"},
+			['Q100331441']		= {"Salmon_spore_print_icon.png", "'''salmón'''"},
+	
+			['crema']			= {"Cream_spore_print_icon.png", "'''crema'''"},
+			['cream']			= {"Cream_spore_print_icon.png", "'''crema'''"},
+			['Q2730433']		= {"Cream_spore_print_icon.png", "'''crema'''"},
+			['Q100331455']		= {"Cream_spore_print_icon.png", "'''crema'''"},
+	
+			['ante']			= {"Buff_spore_print_icon.png", "'''ante'''"},
+			['buff']			= {"Buff_spore_print_icon.png", "'''ante'''"},
+			['Q2085487']		= {"Buff_spore_print_icon.png", "'''ante'''"},
+			['Q100331509']		= {"Buff_spore_print_icon.png", "'''ante'''"},
+	
+			['púrpura']			= {"Purple_spore_print_icon.png", "'''púrpura'''"},
+			['purple']			= {"Purple_spore_print_icon.png", "'''púrpura'''"},
+			['Q3257809']		= {"Purple_spore_print_icon.png", "'''púrpura'''"},
+			['Q100331539']		= {"Purple_spore_print_icon.png", "'''púrpura'''"},
+	
+			['castaño']			= {"Blackish-brown spore print icon.png", "'''castaño'''"},
+			['blackish-brown']	= {"Blackish-brown spore print icon.png", "'''castaño'''"},
+			['Q2040833']		= {"Blackish-brown spore print icon.png", "'''castaño'''"},
+			['Q19888339']		= {"Blackish-brown spore print icon.png", "'''castaño'''"},
+	
+			['verde']			= {"Green spore print icon.png", "'''verde'''"},
+			['green']			= {"Green spore print icon.png", "'''verde'''"},
+			['Q3133']			= {"Green spore print icon.png", "'''verde'''"},
+			['Q100331559']		= {"Green spore print icon.png", "'''verde'''"},
+	
+			['marrón-oliva']	= {"Olive-brown spore print icon.png", "'''marrón-oliva'''"},
+			['olive-brown']		= {"Olive-brown spore print icon.png", "'''marrón-oliva'''"},
+			['Q19888352']		= {"Olive-brown spore print icon.png", "'''marrón-oliva'''"},
+			['Q100331733']		= {"Olive-brown spore print icon.png", "'''marrón-oliva'''"},
+	
+			['marrón-rosáceo']	= {"Pinkish-brown spore print icon.png", "'''marrón-rosáceo'''"},
+			['pinkish-brown']	= {"Pinkish-brown spore print icon.png", "'''marrón-rosáceo'''"},
+			['Q19888366']		= {"Pinkish-brown spore print icon.png", "'''marrón-rosáceo'''"},
+	
+			['negro-púrpura']	= {"Purple-black spore print icon.png", "'''negro-púrpura'''"},
+			['purple-black']	= {"Purple-black spore print icon.png", "'''negro-púrpura'''"},
+			['Q19888373']		= {"Purple-black spore print icon.png", "'''negro-púrpura'''"},
+			['Q100331735']		= {"Purple-black spore print icon.png", "'''negro-púrpura'''"},
+	
+			['marrón-púrpura']	= {"Purple-brown spore print icon.png", "'''marrón-púrpura'''"},
+			['purple-brown']	= {"Purple-brown spore print icon.png", "'''marrón-púrpura'''"},
+			['Q19888381']		= {"Purple-brown spore print icon.png", "'''marrón-púrpura'''"},
+			['Q100331736']		= {"Purple-brown spore print icon.png", "'''marrón-púrpura'''"},
+	
+			['marrón-colorado']	= {"Reddish-brown spore print icon.png", "'''marrón-colorado'''"},
+			['burdeos']			= {"Reddish-brown spore print icon.png", "'''marrón-colorado'''"},
+			['reddish-brown']	= {"Reddish-brown spore print icon.png", "'''marrón-colorado'''"},
+			['Q10859033']		= {"Reddish-brown spore print icon.png", "'''marrón-colorado'''"},
+			['Q100331617']		= {"Reddish-brown spore print icon.png", "'''marrón-colorado'''"},
+	
+			['canela']			= {"Tan spore print icon.png", "'''canela'''"},
+			['bronceado']		= {"Tan spore print icon.png", "'''canela'''"},
+			['tan']				= {"Tan spore print icon.png", "'''canela'''"},
+			['Q1670336']		= {"Tan spore print icon.png", "'''canela'''"},
+			['Q100331692']		= {"Tan spore print icon.png", "'''canela'''"},
+	
+			['naranja-amarillento']	= {"yellow-orange spore print icon.png", "'''naranja-amarillento'''"},
+			['yellow-orange']		= {"yellow-orange spore print icon.png", "'''naranja-amarillento'''"},
+			['Q16645086']			= {"yellow-orange spore print icon.png", "'''naranja-amarillento'''"},
+			['Q100331638']			= {"yellow-orange spore print icon.png", "'''naranja-amarillento'''"},
+	
+			['marrón-amarillento']	= {"Yellow-brown spore print icon.png", "'''marrón-amarillento'''"},
+			['yellow-brown']		= {"Yellow-brown spore print icon.png", "'''marrón-amarillento'''"},
+			['Q19888422']			= {"Yellow-brown spore print icon.png", "'''marrón-amarillento'''"},
+			['Q100331662']			= {"Yellow-brown spore print icon.png", "'''marrón-amarillento'''"},
+	
+			['default']				= {"NA_cap_icon.svg", "'''desconocido'''"},
+		},
+	
+		['ecología'] = {
+			['micorriza']	= {"Mycorrhizal_ecology_icon.png", "[[Micorriza|'''micorrízica''']]"},
+			['mycorrhizal']	= {"Mycorrhizal_ecology_icon.png", "[[Micorriza|'''micorrízica''']]"},
+			['Q99974']		= {"Mycorrhizal_ecology_icon.png", "[[Micorriza|'''micorrízica''']]"},
+	
+			['parásita']	= {"Parasitic_ecology_icon.png", "[[Parasitismo|'''parásita''']]"},
+			['parasitismo']	= {"Parasitic_ecology_icon.png", "[[Parasitismo|'''parásita''']]"},
+			['parasitic']	= {"Parasitic_ecology_icon.png", "[[Parasitismo|'''parásita''']]"},
+			['Q186517']		= {"Parasitic_ecology_icon.png", "[[Parasitismo|'''parásita''']]"},
+	
+			['saprófita']	= {"Saprotrophic_ecology_icon.png", "[[Saprófita|'''saprofítica''']]"},
+			['saprotrophic']= {"Saprotrophic_ecology_icon.png", "[[Saprófita|'''saprofítica''']]"},
+			['saprophytic']	= {"Saprotrophic_ecology_icon.png", "[[Saprófita|'''saprofítica''']]"},
+			['Q114750']		= {"Saprotrophic_ecology_icon.png", "[[Saprófita|'''saprofítica''']]"},
+			
+			['default']		= {"NA_cap_icon.svg", "'''desconocida'''"},
+		},
+	
+		['comestibilidad'] = {
+			['recomendada']				= {"Choice_toxicity_icon.png", "Comestibilidad: [[Seta comestible|'''recomendada''']]"},
+			['seta recomendada']		= {"Choice_toxicity_icon.png", "Comestibilidad: [[Seta comestible|'''recomendada''']]"},
+			['choice']					= {"Choice_toxicity_icon.png", "Comestibilidad: [[Seta comestible|'''recomendada''']]"},
+			['choice mushroom']			= {"Choice_toxicity_icon.png", "Comestibilidad: [[Seta comestible|'''recomendada''']]"},
+			['Q19888517']				= {"Choice_toxicity_icon.png", "Comestibilidad: [[Seta comestible|'''recomendada''']]"},
+	
+			['seta comestible']			= {"Edible_toxicity_icon.png", "Comestibilidad: [[Seta comestible|'''comestible''']]"},
+			['comestible']				= {"Edible_toxicity_icon.png", "Comestibilidad: [[Seta comestible|'''comestible''']]"},
+			['edible mushroom']			= {"Edible_toxicity_icon.png", "Comestibilidad: [[Seta comestible|'''comestible''']]"},
+			['edible']					= {"Edible_toxicity_icon.png", "Comestibilidad: [[Seta comestible|'''comestible''']]"},
+			['Q654236']					= {"Edible_toxicity_icon.png", "Comestibilidad: [[Seta comestible|'''comestible''']]"},
+	
+			['seta no comestible']		= {"Inedible_toxicity_icon.png", "Comestibilidad: [[Envenenamiento por setas|'''no comestible''']]"},
+			['no comestible']			= {"Inedible_toxicity_icon.png", "Comestibilidad: [[Envenenamiento por setas|'''no comestible''']]"},
+			['inedible mushroom']		= {"Inedible_toxicity_icon.png", "Comestibilidad: Comestibilidad: [[Envenenamiento por setas|'''no comestible''']]"},
+			['inedible']				= {"Inedible_toxicity_icon.png", "Comestibilidad: [[Envenenamiento por setas|'''no comestible''']]"},
+			['desagradable']			= {"Inedible_toxicity_icon.png", "Comestibilidad: [[Seta comestible|'''desagradable''']]"},
+			['unpalatable']				= {"Inedible_toxicity_icon.png", "Comestibilidad: [[Seta comestible|'''desagradable''']]"},
+			['Q4317894']				= {"Inedible_toxicity_icon.png", "Comestibilidad: [[Envenenamiento por setas|'''no comestible''']]"},
+	
+			['seta peligrosa']			= {"Diamond-caution.png", "Toxicidad: [[Recolección de hongos#Hongos venenosos que suelen confundirse con los comestibles|'''no se recomienda''']]"},
+			['peligrosa']				= {"Diamond-caution.png", "Toxicidad: [[Recolección de hongos#Hongos venenosos que suelen confundirse con los comestibles|'''no se recomienda''']]"},
+			['peligro']					= {"Diamond-caution.png", "Toxicidad: [[Recolección de hongos#Hongos venenosos que suelen confundirse con los comestibles|'''no se recomienda''']]"},
+			['caution mushroom']		= {"Diamond-caution.png", "Toxicidad: [[Recolección de hongos#Hongos venenosos que suelen confundirse con los comestibles|'''no se recomienda''']]"},
+			['caution']					= {"Diamond-caution.png", "Toxicidad: [[Recolección de hongos#Hongos venenosos que suelen confundirse con los comestibles|'''no se recomienda''']]"},
+			['Q19888537']				= {"Diamond-caution.png", "Toxicidad: [[Recolección de hongos#Hongos venenosos que suelen confundirse con los comestibles|'''no se recomienda''']]"},
+	
+			['seta psicotrópica']		= {"Psychoactive_toxicity_icon.png", "Toxicidad: [[psicotrópico|'''psicotrópica''']]"},
+			['seta psicotrópica']		= {"Psychoactive_toxicity_icon.png", "Toxicidad: [[psicotrópico|'''psicotrópica''']]"},
+			['psicotrópica']			= {"Psychoactive_toxicity_icon.png", "Toxicidad: [[psicotrópico|'''psicotrópica''']]"},
+			['sicotrópica']				= {"Psychoactive_toxicity_icon.png", "Toxicidad: [[psicotrópico|'''psicotrópica''']]"},
+			['psychoactive mushroom']	= {"Psychoactive_toxicity_icon.png", "Toxicidad: [[psicotrópico|'''psicotrópica''']]"},
+			['psychoactive']			= {"Psychoactive_toxicity_icon.png", "Toxicidad: [[psicotrópico|'''psicotrópica''']]"},
+			['Q1169875']				= {"Psychoactive_toxicity_icon.png", "Toxicidad: [[psicotrópico|'''psicotrópica''']]"},
+	
+			['seta alergénica']			= {"Tox allergic.svg", "Toxicidad: puede causar [[alergia a alimentos|'''reacciones alérgicas''']]"},
+			['alergénica']				= {"Tox allergic.svg", "Toxicidad: puede causar [[alergia a alimentos|'''reacciones alérgicas''']]"},
+			['alergénico']				= {"Tox allergic.svg", "Toxicidad: puede causar [[alergia a alimentos|'''reacciones alérgicas''']]"},
+			['allergenic mushroom']		= {"Tox allergic.svg", "Toxicidad: puede causar [[alergia a alimentos|'''reacciones alérgicas''']]"},
+			['allergenic']				= {"Tox allergic.svg", "Toxicidad: puede causar [[alergia a alimentos|'''reacciones alérgicas''']]"},
+			['Q19888579']				= {"Tox allergic.svg", "Toxicidad: puede causar [[alergia a alimentos|'''reacciones alérgicas''']]"},
+	
+			['seta venenosa']			= {"Poisonous_toxicity_icon.png", "Toxicidad: [[Envenenamiento por setas|'''venenosa''']]"},
+			['venenosa']				= {"Poisonous_toxicity_icon.png", "Toxicidad: [[Envenenamiento por setas|'''venenosa''']]"},
+			['poisonous mushroom']		= {"Poisonous_toxicity_icon.png", "Toxicidad: [[Envenenamiento por setas|'''venenosa''']]"},
+			['poisonous']				= {"Poisonous_toxicity_icon.png", "Toxicidad: [[Envenenamiento por setas|'''venenosa''']]"},
+			['Q19888562']				= {"Poisonous_toxicity_icon.png", "Toxicidad: [[Envenenamiento por setas|'''venenosa''']]"},
+	
+			['seta mortal']				= {"Hazard T.svg", "Toxicidad: [[Envenenamiento por setas|'''mortal''']]"},
+			['mortal']					= {"Hazard T.svg", "Toxicidad: [[Envenenamiento por setas|'''mortal''']]"},
+			['deadly mushroom']			= {"Hazard T.svg", "Toxicidad: [[Envenenamiento por setas|'''mortal''']]"},
+			['deadly']					= {"Hazard T.svg", "Toxicidad: [[Envenenamiento por setas|'''mortal''']]"},
+			['Q19888591']				= {"Hazard T.svg", "Toxicidad: [[Envenenamiento por setas|'''mortal''']]"},
+	
+			['seta comestible al ser cocinada']	= {"Cookedonly.svg", "Toxicidad: [[Seta comestible|'''segura''']] al ser cocinada"},
+			['comestible al ser cocinada']		= {"Cookedonly.svg", "Toxicidad: [[Seta comestible|'''segura''']] al ser cocinada"},
+			['edible when cooked']				= {"Cookedonly.svg", "Toxicidad: [[Seta comestible|'''segura''']] al ser cocinada"},
+			['Q62102033']						= {"Cookedonly.svg", "Toxicidad: [[Seta comestible|'''segura''']] al ser cocinada"},
+	
+			['toxicidad desconocida']	= {"Unknown_toxicity_icon.png", "Toxicidad: [[Envenenamiento por setas|'''desconocida''']]"},
+			['desconocida']				= {"Unknown_toxicity_icon.png", "Toxicidad: [[Envenenamiento por setas|'''desconocida''']]"},
+			['desconocido']				= {"Unknown_toxicity_icon.png", "Toxicidad: [[Envenenamiento por setas|'''desconocida''']]"},
+			['unknown toxicity']		= {"Unknown_toxicity_icon.png", "Toxicidad: [[Envenenamiento por setas|'''desconocida''']]"},
+			['unknown']					= {"Unknown_toxicity_icon.png", "Toxicidad: [[Envenenamiento por setas|'''desconocida''']]"},
+			['Q100331783']				= {"Unknown_toxicity_icon.png", "Toxicidad: [[Envenenamiento por setas|'''desconocida''']]"},
+			['default']					= {"Unknown_toxicity_icon.png", "Toxicidad: [[Envenenamiento por setas|'''desconocida''']]"},
+		},
+	},
+	
+	gruposVirus = {
+		['1']		= 'I <small>[[Virus ADN bicatenario]]</small>',
+		['i']		= 'I <small>[[Virus ADN bicatenario]]</small>',
+		['q2901600']= 'I <small>[[Virus ADN bicatenario]]</small>',
+		['2']		= 'II <small>[[Virus ADN monocatenario]]</small>',
+		['ii']		= 'II <small>[[Virus ADN monocatenario]]</small>',
+		['q9094469']= 'II <small>[[Virus ADN monocatenario]]</small>',
+		['3']		= 'III <small>[[Virus ARN bicatenario]]</small>',
+		['iii']		= 'III <small>[[Virus ARN bicatenario]]</small>',
+		['q3307900']= 'III <small>[[Virus ARN bicatenario]]</small>',
+		['4']		= 'IV <small>[[Virus ARN monocatenario positivo]]</small>',
+		['iv']		= 'IV <small>[[Virus ARN monocatenario positivo]]</small>',
+		['q9094478']= 'IV <small>[[Virus ARN monocatenario positivo]]</small>',
+		['5']		= 'V <small>[[Virus ARN monocatenario negativo]]</small>',
+		['v']		= 'V <small>[[Virus ARN monocatenario negativo]]</small>',
+		['q9285327']= 'V <small>[[Virus ARN monocatenario negativo]]</small>',
+		['6']		= 'VI <small>[[Virus ARN monocatenario retrotranscrito]]</small>',
+		['vi']		= 'VI <small>[[Virus ARN monocatenario retrotranscrito]]</small>',
+		['q3933801']= 'VI <small>[[Virus ARN monocatenario retrotranscrito]]</small>',
+		['7']		= 'VII <small>[[Virus ADN bicatenario retrotranscrito]]</small>',
+		['vii']		= 'VII <small>[[Virus ADN bicatenario retrotranscrito]]</small>',
+		['q3754200']= 'VII <small>[[Virus ADN bicatenario retrotranscrito]]</small>',
+	},
+
+	razas = {
+		['Perro'] = 'perro', ['perro'] = 'perro', ['Raza de perro'] = 'perro', ['raza de perro'] = 'perro', ['Raza de [[perro]]'] = 'perro', ['raza de [[perro]]'] = 'perro', ['[[Raza de perro]]'] = 'perro', ['[[raza de perro]]'] = 'perro', ['Q39367'] = 'perro', 
+		['Gato'] = 'gato', ['gato'] = 'gato', ['Raza de gato'] = 'gato', ['raza de gato'] = 'gato', ['Raza de [[gato]]'] = 'gato', ['raza de [[gato]]'] = 'gato', ['[[Raza de gato]]'] = 'gato', ['[[raza de gato]]'] = 'gato', ['Q43577'] = 'gato', 
+		['Caballo'] = 'caballo', ['caballo'] = 'caballo', ['Raza de caballo'] = 'caballo', ['raza de caballo'] = 'caballo', ['Raza de [[caballo]]'] = 'caballo', ['raza de [[caballo]]'] = 'caballo', ['[[Raza de caballo]]'] = 'caballo', ['[[raza de caballo]]'] = 'caballo', ['Q1160573'] = 'caballo', 
+		['Caprino'] = 'caprino', ['caprino'] = 'caprino', ['Raza de caprino'] = 'caprino', ['raza de caprino'] = 'caprino', ['Raza de [[caprino]]'] = 'caprino', ['raza de [[caprino]]'] = 'caprino', ['[[Raza de caprino]]'] = 'caprino', ['[[raza de caprino]]'] = 'caprino', ['Q15622387'] = 'caprino', 
+		['Bovino'] = 'bovino', ['bovino'] = 'bovino', ['Raza de bovino'] = 'bovino', ['raza de bovino'] = 'bovino', ['Raza de [[bovino]]'] = 'bovino', ['raza de [[bovino]]'] = 'bovino', ['[[Raza de bovino]]'] = 'bovino', ['[[raza de bovino]]'] = 'bovino', ['Q21521438'] = 'bovino', ['Q12045585'] = 'bovino', 
+		['Ovino'] = 'ovino', ['ovino'] = 'ovino', ['Raza de ovino'] = 'ovino', ['raza de ovino'] = 'ovino', ['Raza de [[ovino]]'] = 'ovino', ['raza de [[ovino]]'] = 'ovino', ['[[Raza de ovino]]'] = 'ovino', ['[[raza de ovino]]'] = 'ovino', ['Q15622363'] = 'ovino', 
+		['Ave'] = 'ave', ['ave'] = 'ave', ['Raza de ave'] = 'ave', ['raza de ave'] = 'ave', ['Raza de [[ave]]'] = 'ave', ['raza de [[ave]]'] = 'ave', ['[[Raza de ave]]'] = 'ave', ['[[raza de ave]]'] = 'ave', 
+		['Gallina'] = 'gallina', ['gallina'] = 'gallina', ['Raza de gallina'] = 'gallina', ['raza de gallina'] = 'gallina', ['Raza de [[gallina]]'] = 'gallina', ['raza de [[gallina]]'] = 'gallina', ['[[Raza de gallina]]'] = 'gallina', ['[[raza de gallina]]'] = 'gallina', ['Q15304943'] = 'gallina', 
+		['Conejo'] = 'conejo', ['conejo'] = 'conejo', ['Raza de conejo'] = 'conejo', ['raza de conejo'] = 'conejo', ['Raza de [[conejo]]'] = 'conejo', ['raza de [[conejo]]'] = 'conejo', ['[[Raza de conejo]]'] = 'conejo', ['[[raza de conejo]]'] = 'conejo', ['Q12045584'] = 'conejo', 
+		['Pato'] = 'pato', ['pato'] = 'pato', ['Raza de pato'] = 'pato', ['raza de pato'] = 'pato', ['Raza de [[pato]]'] = 'pato', ['raza de [[pato]]'] = 'pato', ['[[Raza de pato]]'] = 'pato', ['[[raza de pato]]'] = 'pato', 
+		['Burro'] = 'burro', ['burro'] = 'burro', ['Raza de burro'] = 'burro', ['raza de burro'] = 'burro', ['Raza de [[burro]]'] = 'burro', ['raza de [[burro]]'] = 'burro', ['[[Raza de burro]]'] = 'burro', ['[[raza de burro]]'] = 'burro', ['Q61901018'] = 'burro',
+	},
+
+	estadoConservacionCategorias = {
+		['Taxones'] = {
+			-- Ordo
+			['anura']				= 'Ranas y sapos (Anura)',
+			['caudata']				= 'Salamandras y tritones (Caudata)',
+			['cetacea']				= 'Cetáceos',
+			['rodentia']			= 'Roedores',
+			['chiroptera']			= 'Murciélagos (Chiroptera)',
+			['primates']			= 'Primates',
+			['anseriformes']		= 'Patos y gansos (Anseriformes)',
+			['passeriformes']		= 'Pájaros cantores (Passeriformes)',
+			['psittaciformes']		= 'Cacatúas y papagayos (Psittaciformes)',
+			['rajiformes']			= 'Peces cartilaginosos (Chondrichthyes)',
+			['carnivora']			= 'Mamíferos',
+			['falconiformes']		= 'Rapaces diurnas (Falconiformes)',
+			['charadriiformes']		= 'Charadriiformes',
+			['galliformes']			= 'Gallináceas (Galliformes)',
+			['petromyzontiformes']	= 'Peces',
+			['geraniales']			= 'Rósidas',
+			['myrtales']			= 'Rósidas',
+			['crossosomatales']		= 'Rósidas',
+			['zygophyllales']		= 'Rósidas',
+			['celastrales']			= 'Rósidas',
+			['malpighiales']		= 'Rósidas',
+			['oxalidales']			= 'Rósidas',
+			['fabales']				= 'Rósidas',
+			['rosales']				= 'Rósidas',
+			['cucurbitales']		= 'Rósidas',
+			['fagales']				= 'Rósidas',
+			['huerteales']			= 'Rósidas',
+			['brassicales']			= 'Rósidas',
+			['malvales']			= 'Rósidas',
+			['sapindales']			= 'Rósidas',
+			['lamiales']			= 'Astéridas',
+			['cornales']			= 'Astéridas',
+			['ericales']			= 'Astéridas',
+			['garryales']			= 'Astéridas',
+			['gentianales']			= 'Astéridas',
+			['lamiales']			= 'Astéridas',
+			['solanales']			= 'Astéridas',
+			['apiales']				= 'Astéridas',
+			['aquifoliales']		= 'Astéridas',
+			['asterales']			= 'Astéridas',
+			['bruniales']			= 'Astéridas',
+			['dipsacales']			= 'Astéridas',
+			['escalloniales']		= 'Astéridas',
+			['paracryphiales']		= 'Astéridas',
+			
+			-- Subclassis
+			['magnoliidae']			= 'Magnólidas',
+	
+			-- Classis
+			['birdaves']			= 'Aves',
+			['ave']					= 'Aves',
+			['aves']				= 'Aves',
+			['reptilia']			= 'Reptiles',
+			['synapsida']			= 'Reptiles',
+			['sauropsida']			= 'Reptiles',
+			['amphibia']			= 'Anfibios',
+			['lissamphibia']		= 'Anfibios',
+			['mammalia']			= 'Mamíferos',
+			['mamíferos']			= 'Mamíferos',
+			['marsupialia']			= 'Mamíferos',
+			['chondrichthyes']		= 'Peces cartilaginosos (Chondrichthyes)',
+			['elasmobranchii']		= 'Peces cartilaginosos (Chondrichthyes)',
+			['osteichthyes']		= 'Peces óseos (Osteichthyes)',
+			['actinopterygii']		= 'Peces óseos (Osteichthyes)',
+			['sarcopterygii']		= 'Peces óseos (Osteichthyes)',
+			['gastropoda']			= 'Gasterópodos',
+			['cephalopoda']			= 'Cefalópodos',
+			['bivalvia']			= 'Moluscos bivalvos',
+			['insecta']				= 'Insectos',
+			['magnoliopsida']		= 'Angiospermas',
+			['monocotyledoneae']	= 'Monocotiledóneas',
+			['monocots']			= 'Monocotiledóneas',
+			['liliopsida']			= 'Monocotiledóneas',
+			['eudicotyledoneae']	= 'Eudicotiledóneas',
+			['coniferopsida']		= 'Coníferas',
+			['pinopsida']			= 'Coníferas',
+	
+			-- Unranked ClassisUn
+			['monocots']			= 'Monocotiledóneas',
+			['eudicots']			= 'Eudicotiledóneas',
+			['magnoliidae']			= 'Magnólidas',
+	
+			-- Subphylium
+			['crustacea']			= 'Crustáceos',
+	
+			-- Phylum
+			['mollusca']			= 'Moluscos',
+			['arthropoda']			= 'Artrópodos',
+	
+			-- Divisio
+			['ginkgophyta']			= 'Gimnospermas',
+			['gnetophyta']			= 'Gimnospermas',
+			['cycadophyta']			= 'Gimnospermas',
+			['pinophyta']			= 'Coníferas',
+			['coniferophyta']		= 'Coníferas',
+			['angiospermae']		= 'Angiospermas',
+			['magnoliophyta']		= 'Angiospermas',
+	
+			-- Regnum
+			['animal']				= 'Animales',
+			['animalia']			= 'Animales',
+			['plantae']				= 'Plantas',
+		},
+	
+		['EstadosConservacion'] = {
+			['DD']			= 'sin datos suficientes sobre conservación',
+			['VU']			= 'en estado vulnerable',
+			['EN']			= 'en peligro de extinción',
+			['CR']			= 'en peligro crítico de extinción',
+			['LC']			= 'no', -- ¿No qué? Depende del género gramatical, véase a continuación
+			['NT']			= 'medianamente',
+		},
+	
+		['Amenazados'] = { -- GM = Género gramatical
+			-- Ordo
+			['geraniales']			= 'amenazadas',
+			['myrtales']			= 'amenazadas',
+			['crossosomatales']		= 'amenazadas',
+			['zygophyllales']		= 'amenazadas',
+			['celastrales']			= 'amenazadas',
+			['malpighiales']		= 'amenazadas',
+			['oxalidales']			= 'amenazadas',
+			['fabales']				= 'amenazadas',
+			['rosales']				= 'amenazadas',
+			['cucurbitales']		= 'amenazadas',
+			['fagales']				= 'amenazadas',
+			['huerteales']			= 'amenazadas',
+			['brassicales']			= 'amenazadas',
+			['malvales']			= 'amenazadas',
+			['sapindales']			= 'amenazadas',
+			['lamiales']			= 'amenazadas',
+			['cornales']			= 'amenazadas',
+			['ericales']			= 'amenazadas',
+			['garryales']			= 'amenazadas',
+			['gentianales']			= 'amenazadas',
+			['lamiales']			= 'amenazadas',
+			['solanales']			= 'amenazadas',
+			['apiales']				= 'amenazadas',
+			['aquifoliales']		= 'amenazadas',
+			['asterales']			= 'amenazadas',
+			['bruniales']			= 'amenazadas',
+			['dipsacales']			= 'amenazadas',
+			['escalloniales']		= 'amenazadas',
+			['paracryphiales']		= 'amenazadas',
+			['falconiformes']		= 'amenazadas',
+			['charadriiformes']		= 'amenazadas',
+			['galliformes']			= 'amenazadas',
+			
+			['chiroptera']			= 'amenazados',
+			['passeriformes']		= 'amenazados',
+			['psittaciformes']		= 'amenazados',
+			['petromyzontiformes']	= 'amenazados',
+			['rajiformes']			= 'amenazados',
+			['carnivora']			= 'amenazados',
+			['anura']				= 'amenazados',
+			['caudata']				= 'amenazados',
+			['cetacea']				= 'amenazados',
+			['rodentia']			= 'amenazados',
+			['primates']			= 'amenazados',
+			['anseriformes']		= 'amenazados',
+			
+			-- Subclassis'
+			['magnoliidae']			= 'amenazadas',
+			
+			-- Classis'
+			['magnoliopsida']		= 'amenazadas',
+			['coniferopsida']		= 'amenazadas',
+			['pinopsida']			= 'amenazadas',
+			['monocotyledoneae']	= 'amenazadas',
+			['monocots']			= 'amenazadas',
+			['liliopsida']			= 'amenazadas',
+			['eudicotyledoneae']	= 'amenazadas',
+			['birdaves']			= 'amenazadas',
+			['ave']					= 'amenazadas',
+			['aves']				= 'amenazadas',
+			
+			['reptilia']			= 'amenazados',
+			['synapsida']			= 'amenazados',
+			['sauropsida']			= 'amenazados',
+			['amphibia']			= 'amenazados',
+			['lissamphibia']		= 'amenazados',
+			['mammalia']			= 'amenazados',
+			['mamíferos']			= 'amenazados',
+			['marsupialia']			= 'amenazados',
+			['chondrichthyes']		= 'amenazados',
+			['elasmobranchii']		= 'amenazados',
+			['osteichthyes']		= 'amenazados',
+			['actinopterygii']		= 'amenazados',
+			['sarcopterygii']		= 'amenazados',
+			['gastropoda']			= 'amenazados',
+			['cephalopoda']			= 'amenazados',
+			['bivalvia']			= 'amenazados',
+			['insecta']				= 'amenazados',
+			
+			-- Unranked classis'
+			['monocots']			= 'amenazadas',
+			['magnoliidae']			= 'amenazadas',
+			['eudicots']			= 'amenazadas',
+			
+			-- Subphylum'
+			['crustacea']			= 'amenazados',
+			
+			-- Phylum
+			['mollusca']			= 'amenazados',
+			['arthropoda']			= 'amenazados',
+			
+			-- Divisio
+			['angiospermae']		= 'amenazadas',
+			['magnoliophyta']		= 'amenazadas',
+			['ginkgophyta']			= 'amenazadas',
+			['gnetophyta']			= 'amenazadas',
+			['cycadophyta']			= 'amenazadas',
+			['pinophyta']			= 'amenazadas',
+			['coniferophyta']		= 'amenazadas',
+			
+			-- Regnum
+			['animal']				= 'amenazados',
+			['animalia']			= 'amenazados',
+	
+			['planta']				= 'amenazadas',
+			['plantae']				= 'amenazadas',
+		}
+	},
+
+	taxonomiaInferior = {
+		-- Principales
+		['Q146481']			= {'[[Reino]]s', 'o'}, -- dominio
+		['Q36732']			= {'[[Filo]]s', 'o'}, -- reino
+		['Q38348']			= {'[[Clase]]s', 'a'}, -- filo
+		['Q37517']			= {'[[Subclase]]s', 'a'}, -- clase
+		['Q36602']			= {'[[Suborden|Subórdenes]]', 'a'}, -- orden
+		['Q5867959']		= {'[[Infraorden|Infraórdenes]]', 'a'}, -- suborden
+		['Q35409']			= {'[[Subfamilia]]s', 'a'}, -- familia
+		['Q164280']			= {'[[Género]]s', 'a'}, -- subfamilia
+		['Q34740']			= {'[[Subgénero]]s', 'o'}, -- género
+		['Q7432']			= {'[[Subespecie]]s', 'a'}, -- especie
+		
+		-- Secundarias
+--		['dominio']			= {'[[Subdominio]]s', 'o'}, -- dominio
+--		['subdominio']		= {'[[Superreino]]s', 'o'}, -- 
+--		['superreino']		= {'[[Reino]]s', 'o'}, -- 
+--		['subreino']		= {'[[Infrareino]]s', 'o'}, -- 
+--		['infrareino']		= {'[[Rama]]s', 'o'}, -- 
+--		['rama']			= {'[[Superfilo]]s', 'a'}, -- 
+--		['superfilo']		= {'[[Superdivisión|Superdivisiones]]', 'o'}, -- 
+--		['superdivisión']	= {'[[Filo]]s', 'o'}, -- 
+--		['Q38348']			= {'[[División_(biología)|Divisiones]]', 'o'}, -- filo
+--		['división']		= {'[[Subfilo]]s', 'a'}, -- 
+--		['subfilo']			= {'[[Subdivisión|Subdivisiones]]', 'o'}, -- 
+--		['subdivisión']		= {'[[Infrafilo]]s', 'a'}, -- 
+--		['infrafilo']		= {'[[Infradivision]]es', 'o'}, -- 
+--		['infradivision']	= {'[[Microfilo]]s', 'a'}, -- 
+--		['microfilo']		= {'[[Nanofilo]]s', 'o'}, -- 
+--		['nanofilo']		= {'[[Superclase]]s', 'o'}, -- 
+--		['superclase']		= {'[[Clase]]s', 'a'}, -- 
+--		['subclase']		= {'[[Infraclase]]s', 'a'}, -- 
+--		['infraclase']		= {'[[Magnoorden|Magnoórdenes]]', 'a'}, -- 
+--		['magnoorden']		= {'[[Superorden|Superórdenes]]', 'a'}, -- 
+--		['superorden']		= {'[[Gran Orden|Gran Órdenes]]', 'a'}, -- 
+--		['gran orden']		= {'[[Mirorden|Mirórdenes]]', 'a'}, -- 
+--		['mirorden']		= {'[[Orden|Órdenes]]', 'a'}, -- 
+--		['infraorden']		= {'[[Microorden|Microórdenes]]', 'a'}, -- 
+--		['microorden']		= {'[[Pavorden|Pavórdenes]]', 'a'}, -- 
+--		['pavorden']		= {'[[Supersección|Supersecciones]]', 'a'}, -- 
+--		['supersección']	= {'[[Sección|Secciones]]', 'a'}, -- 
+--		['sección']			= {'[[Subsección|Subsecciones]]', 'a'}, -- 
+--		['subsección']		= {'[[Grupo]]s', 'a'}, -- 
+--		['Q2136103']		= {'[[Epifamilia]]s', 'a'}, -- superfamilia
+--		['Q10296147']		= {'[[Familia]]s', 'a'}, -- epifamilia
+--		['Q14817220']		= {'[[Tribu]]s', 'a'}, -- supertribu
+--		['Q227936']			= {'[[Subtribu]]s', 'a'}, -- tribu
+--		['Q3965313']		= {'[[Género]]s', 'a'}, -- subtribu
+--		['Q3238261']		= {'[[Supersección|Supersecciones]]', 'o'}, -- subgénero (zoología)
+--		['Q3181348']		= {'[[Subsección|Subsecciones]]', 'a'}, -- sección (botánica)
+--		['Q10861426']		= {'[[Subsección|Subsecciones]]', 'a'}, -- sección (zoología)
+--		['Q5998839']		= {'[[Serie]]s', 'a'}, -- subsección (botánica)
+--		['Q10861375']		= {'[[Serie]]s', 'a'}, -- subsección (zoología)
+--		['Q3025161']		= {'[[Subserie]]s', 'a'}, -- serie (botánica)
+--		['Q21061732']		= {'[[Subserie]]s', 'a'}, -- serie (zoología)
+--		['Q13198444']		= {'[[Especie]]s', 'a'}, -- subserie (botánica)
+--		['Q60533422']		= {'[[Especie]]s', 'a'}, -- subserie (zoología)
+	}
+}
