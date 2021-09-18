@@ -40,7 +40,7 @@ function p.main(frame)
 		    if #Tags > 40 then Tags = {} end
 		    Tags = table.concat(Tags)
 		    
-			return frame:preprocess('{{' .. Template .. '|type=line|interpolate=monotone|width='.. width .. '|height='.. height .. '|x='.. axisX .. axisY .. Tags .. '}}')
+			return frame:preprocess('{{' .. Template .. '|type=line|width='.. width .. '|height='.. height .. '|x='.. axisX .. axisY .. Tags .. '}}')
 		end
 	end
 end
