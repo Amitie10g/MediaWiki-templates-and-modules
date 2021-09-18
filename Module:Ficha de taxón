@@ -1,0 +1,2034 @@
+--[[
+  Module for formatting a Taxobox for the Spanish Wikipedia, bringing data from Wikidata
+  
+  Target: Spanish Wikipedia
+  Status: in development
+  License: CC-BY-SA/GFDL
+]]
+
+local p = {}
+
+local Data				= mw.loadData('Módulo:Ficha_de_taxón/datos')
+local ModuloWikidata	= require('Módulo:Wikidata')
+local ModuloFormatos	= require('Módulo:Wikidata/Formatos')
+local ModuloPaginas		= require('Módulo:Páginas')
+local ModuloArgs   		= require('Módulo:Argumentos')
+local Ficha				= require('Módulo:Ficha').infobox
+local elementoTabla		= require('Módulo:Tablas').elemento
+local numeroUnidad		= ModuloFormatos.formatoUnidad2
+local formatoNumero		= ModuloFormatos.formatoNumero2
+local argumentos		= ModuloArgs.obtenerValorDeArgumentos
+
+-- :: Estilos por defecto
+local EstiloTabla		= 'border-spacing:2px;padding:2px;'
+local EstiloEtiqueta	= 'width:30%;'
+local EstiloDatos		= 'width:70%;'
+local anchoImagen		= '245px'
+local ColorTituloFondo	= '#FEE16A'
+local ColorTituloTexto	= '#ffffff'
+local ColorEtiqueta		= '#fffae6'
+
+-- :: Variables globales
+local Entidad, InstanciaDeID, Imagen, Imagen2, TamanoImagen, Pie, Pie2, Mapa, MapaAncho, MapaDistribucion, MapaLeyenda, MapaPie, Mapa2, Mapa2Ancho, Mapa2Distribucion, Mapa2Leyenda, Mapa2Pie, Mapa3, Mapa3Ancho, Mapa3Distribucion, Mapa3Leyenda, Mapa3Pie, Mapa4, MapaAncho4, Mapa4Distribucion, Mapa4Leyenda, Mapa4Pie
+
+local function _init(frame)
+	ModuloWikidata:setFrame(frame)
+	ModuloArgs.obtenerTablaDeArgumentos(frame)
+	Entidad			= mw.wikibase.getEntity(argumentos{'id'}) or mw.wikibase.getEntity(argumentos{'entidad'}) or {}
+	InstanciaDeID	= propiedad('P31', {['formato'] = 'entidadID'})
+	Titulo			= '<div style="float:right; padding:.1em;" class="noprint">[[Archivo:Symbol question.svg|16px|link=Ayuda:Cómo leer una ficha de taxón]]</div><div style="float:left;" class="noprint"><span style="padding-left:1em;">&nbsp;</span></div>' .. argumentos{'name', 'nombre', {ModuloWikidata.obtenerEtiquetaWikidata, Entidad}, {ModuloPaginas.nombrePagina, {desambiguar='sí'}}}
+
+	-- :: Imagen
+	Imagen			= argumentos{'imagen', 'image'}
+	Imagen2			= argumentos{'imagen2', 'image2'}
+	TamanoImagen	= argumentos{'image_width', 'tamaño imagen', 'tamaño_imagen'} or '250px'
+
+	if Imagen then
+		Pie			= argumentos{'pie', 'image_caption'}
+	else
+		Imagen, Pie	= ModuloWikidata.obtenerImagenWikidata(Entidad, 'P18')
+	end
+
+	if Pie then
+		Pie = '<span style="display:inline;font-size:95%;">' .. Pie .. '</span>'
+	end
+
+	if Imagen2 == 'no' then Imagen2 = nil end
+
+	-- Segunda imagen
+	if Imagen2 then
+		Pie2		= argumentos{'pie2', 'image2_caption'}
+	end
+
+	if Pie2 then
+		Pie2 = '<span style="display:inline;font-size:95%;">' .. Pie2 .. '</span>'
+	end
+
+	--:: Datos geográficos y temporales
+	Mapa				= argumentos{'mapa', 'range_map'} 
+	MapaAncho			= argumentos{'mapa_ancho', 'range_map_width'} or '250px'
+	MapaDistribucion	= argumentos{'difusión', 'distribución'} or obtenerMapaDistribucion()
+
+	if Mapa then
+		MapaPie			= argumentos{'mapa_pie', 'range_map_caption'} or ''
+	else
+		Mapa, MapaPie	= ModuloWikidata.obtenerImagenWikidata(Entidad, 'P181')
+	end
+
+	if Mapa then
+		if MapaPie then
+			Mapa		= '[[Archivo:' .. Mapa .. '|' .. MapaAncho .. '|alt=' .. MapaPie .. ']]'
+		else
+			Mapa		= '[[Archivo:' .. Mapa .. '|' .. MapaAncho .. ']]'
+		end
+	end
+
+	if Mapa and MapaPie then
+		MapaPie = '<span style="display:inline;font-size:95%;">' .. MapaPie .. '</span>'
+	end
+
+	if Mapa then
+		MapaLeyenda		= argumentos{'mapa_leyenda', 'range_map_legend'}
+		if MapaLeyenda then
+			MapaLeyenda	= '<div style="text-align:left; font-size:smaller">' .. MapaLeyenda .. '</div>'
+		end
+	end
+
+	Mapa2				= argumentos{'mapa2', 'range_map2'}
+	Mapa2Ancho					= argumentos{'mapa2_ancho', 'range_map2_width'} or '250px'
+
+	if Mapa2 then
+		Mapa2Pie		= argumentos{'mapa2_pie', 'range_map2_caption'}
+		if Mapa2:match("^Archivo:[%w%s%.%,_-]+$") then
+		    Mapa2 = '[[' .. Mapa2 .. '|' .. Mapa2Ancho .. '|alt=' .. Mapa2Pie .. ']]'
+		elseif Mapa2:match("^[%w%s%.%,_-]+$") then
+		    Mapa2 = '[[Archivo:' .. Mapa2 .. '|' .. Mapa2Ancho .. '|alt=' .. Mapa2Pie .. ']]'
+		end
+	end
+
+	if Mapa2 and Mapa2Pie then
+		Mapa2Pie = '<span style="display:inline;font-size:95%;">' .. Mapa2Pie .. '</span>'
+	end
+	
+	Mapa3				= argumentos{'mapa3', 'range_map3'}
+	Mapa3Ancho			= argumentos{'mapa3_ancho', 'range_map3_width'} or '250px'
+
+	if Mapa3 then
+		Mapa3Pie		= argumentos{'mapa3_pie', 'range_map3_caption'}
+		if Mapa3:match("^Archivo:[%w%s%.%,_-]+$") then
+		    Mapa3 = '[[' .. Mapa3 .. '|' .. Mapa3Ancho .. '|alt=' .. Mapa3Pie .. ']]'
+		elseif Mapa3:match("^[%w%s%.%,_-]+$") then
+		    Mapa3 = '[[Archivo:' .. Mapa3 .. '|' .. Mapa3Ancho .. '|alt=' .. Mapa3Pie .. ']]'
+		end
+	end
+
+	if Mapa3 and Mapa3Pie then
+		Mapa3Pie = '<span style="display:inline;font-size:95%;">' .. Mapa3Pie .. '</span>'
+	end
+
+	Mapa4				= argumentos{'mapa4', 'range_map4'}
+	Mapa4Ancho			= argumentos{'mapa4_ancho', 'range_map4_width'} or '250px'
+
+	if Mapa4 then
+		Mapa4Pie		= argumentos{'mapa4_pie', 'range_map4_caption'}
+		if Mapa4:match("^Archivo:[%w%s%.%,_-]+$") then
+		    Mapa4 = '[[' .. Mapa4 .. '|' .. Mapa4Ancho .. '|alt=' .. Mapa4Pie .. ']]'
+		elseif Mapa4:match("^[%w%s%.%,_-]+$") then
+		    Mapa4 = '[[Archivo:' .. Mapa4 .. '|' .. Mapa4Ancho .. '|alt=' .. Mapa4Pie .. ']]'
+		end
+	end
+
+	if Mapa4 and Mapa4Pie then
+		Mapa4Pie = '<span style="display:inline;font-size:95%;">' .. Mapa4Pie .. '</span>'
+	end
+end
+
+function p.FichaTaxon(frame)
+	-- :: Inicializardor
+	_init(frame)
+
+	--:: Datos taxonómicos
+	local Taxonomia = obtenerTaxonomia() or {}
+
+	-- Mostrar todo el arbol taxonómico o solo los datos relevantes
+	local Todo					= argumentos{'todo'}
+	
+	-- :: Nombres
+	local NombreTaxon			= argumentos{'nombre_taxón', 'nombre taxón', {propiedad, 'P225', {['enlace'] = 'no'}}}
+	local NombreComunTitulo		= argumentos{'nombre_común', 'nombre común', {propiedad, 'P1843', {['uno'] = 'sí', ['idioma'] = 'es'}}} or Titulo or ''
+	local NombreComun			= argumentos{'nombre_común', 'nombre común', {propiedad, 'P1843', {['lista'] = 'nobullet', ['idioma'] = 'es'}}} or ''
+	local NombreComunDato
+	if string.len(NombreComun) > string.len(NombreComunTitulo) then NombreComunDato	= NombreComun end
+
+	-- :: Taxonomía
+	local Domain				= argumentos{'dominio', 'domain'} or Taxonomia['dominio']
+	local DomainAuth			= argumentos{'dominio_autoridad', 'domain_authority'}-- or Taxonomia['']
+	if DomainAuth then Domain   = Domain ..'<br><span class="etiqueta_autoridad">' .. DomainAuth .. '<span>' end
+
+	local RegnumUn				= argumentos{'reino_sin_clasificar', 'unranked_regnum'}-- or Taxonomia['']
+	local RegnumUnAuth			= argumentos{'reino_sin_clasificar_autoridad', 'unranked_regnum_authority'}-- or Taxonomia['']
+	if RegnumUnAuth then RegnumUn = RegnumUn ..'<br><span class="etiqueta_autoridad">' .. RegnumUnAuth .. '<span>' end
+
+	local Superregnum			= argumentos{'superreino', 'superregnum'} or Taxonomia['superreino']
+	local SuperregnumAuth		= argumentos{'superreino_autoridad', 'superregnum_authority'}-- or Taxonomia['']
+	if SuperregnumAuth then Superregnum =  Superregnum..'<br><span class="etiqueta_autoridad">' .. SuperregnumAuth .. '<span>' end
+
+	local Regnum				= argumentos{'reino', 'regnum'}  or Taxonomia['reino']
+	local RegnumAuth			= argumentos{'reino_autoridad', 'regnum_authority'}-- or Taxonomia['']
+	if RegnumAuth then Regnum = Regnum ..'<br><span class="etiqueta_autoridad">' .. RegnumAuth .. '<span>' end
+
+	local Subregnum				= argumentos{'subreino', 'subregnum'} or Taxonomia['subreino']
+	local SubregnumAuth			= argumentos{'subreino_autoridad', 'subregnum_authority'}-- or Taxonomia['']
+	if SubregnumAuth then Subregnum = Subregnum ..'<br><span class="etiqueta_autoridad">' .. SubregnumAuth .. '<span>' end
+
+	local PhylumUn				= argumentos{'filo_sin_clasificar', 'unranked_phylum'}-- or Taxonomia['']
+	local PhylumUnAuth			= argumentos{'filo_sin_clasificar_autoridad', 'unranked_phylum_authority'}-- or Taxonomia['']
+	if PhylumUnAuth then PhylumUn = PhylumUn ..'<br><span class="etiqueta_autoridad">' .. PhylumUnAuth .. '<span>' end
+
+	local Superdivisio			= argumentos{'superdivisión', 'superdivisio'} or Taxonomia['superdivisión']
+	local SuperdivisioAuth		= argumentos{'superdivisión_autoridad', 'superdivisio_authority'}-- or Taxonomia['']
+	if SuperdivisioAuth then Superdivisio = Superdivisio ..'<br><span class="etiqueta_autoridad">' .. SuperdivisioAuth .. '<span>' end
+
+	local Superphylum			= argumentos{'superfilo', 'superphylum'} or Taxonomia['superfilo']
+	local SuperphylumAuth		= argumentos{'superfilo_autoridad', 'superphylum_authority'}-- or Taxonomia['']
+	if SuperphylumAuth then Superphylum =  Superphylum..'<br><span class="etiqueta_autoridad">' .. SuperphylumAuth .. '<span>' end
+
+	local Divisio				= argumentos{'división', 'divisio'} or Taxonomia['división']
+	local DivisioAuth			= argumentos{'división_autoridad', 'divisio_authority'}-- or Taxonomia['']
+	if DivisioAuth then Divisio = Divisio ..'<br><span class="etiqueta_autoridad">' .. DivisioAuth .. '<span>' end
+
+	local Phylum				= argumentos{'filo', 'phylum'} or Taxonomia['filo']
+	local PhylumAuth			= argumentos{'filo_autoridad', 'phylum_authority'}-- or Taxonomia['']
+	if PhylumAuth then Phylum = Phylum ..'<br><span class="etiqueta_autoridad">' .. PhylumAuth .. '<span>' end
+
+	local Subdivisio			= argumentos{'subdivisión', 'subdivisio'}
+	local SubdivisioAuth		= argumentos{'subdivisión_autoridad', 'subdivisio_authority'}
+	if SubdivisioAuth then Subdivisio = Subdivisio ..'<br><span class="etiqueta_autoridad">' .. SubdivisioAuth .. '<span>' end
+
+	local Subphylum				= argumentos{'subfilo', 'subphylum'} or Taxonomia['subfilo']
+	local SubphylumAuth			= argumentos{'subfilo_autoridad', 'subphylum_authority'}-- or Taxonomia['']
+	if vAuth then Subphylum = Subphylum ..'<br><span class="etiqueta_autoridad">' .. SubphylumAuth .. '<span>' end
+
+	local Infraphylum			= argumentos{'infrafilo', 'infraphylum'} or Taxonomia['infrafilo']
+	local InfraphylumAuth		= argumentos{'infrafilo_autoridad', 'infraphylum_authority'}-- or Taxonomia['']
+	if InfraphylumAuth then Infraphylum = Infraphylum ..'<br><span class="etiqueta_autoridad">' .. InfraphylumAuth .. '<span>' end
+
+	local Microphylum			= argumentos{'microfilo', 'microphylum'} or Taxonomia['microfilo']
+	local MicrophylumAuth		= argumentos{'microfilo_autoridad', 'microphylum_authority'}-- or Taxonomia['']
+	if MicrophylumAuth then Microphylum = Microphylum ..'<br><span class="etiqueta_autoridad">' .. MicrophylumAuth .. '<span>' end
+
+	local Nanophylum			= argumentos{'nanofilo', 'nanophylum'} or Taxonomia['nanofilo']
+	local NanophylumAuth		= argumentos{'nanophylum_autoridad', 'nanophylum_authority'}-- or Taxonomia['']
+	if NanophylumAuth then Nanophylum = Nanophylum ..'<br><span class="etiqueta_autoridad">' .. NanophylumAuth .. '<span>' end
+
+	local ClassisUn				= argumentos{'clase_sin_clasificar', 'unranked_classis'}-- or Taxonomia['']
+	local ClassisUnAuth			= argumentos{'clase_sin_clasificar_autoridad', 'unranked_classis_authority'}-- or Taxonomia['']
+	if ClassisUnAuth then ClassisUn = ClassisUn ..'<br><span class="etiqueta_autoridad">' .. ClassisUnAuth .. '<span>' end
+
+	local Superclassis			= argumentos{'superclase', 'superclassis'} or Taxonomia['superclase']
+	local SuperclassisAuth		= argumentos{'superclase_autoridad', 'superclassis_authority'}-- or Taxonomia['']
+	if SuperclassisAuth then Superclassis = Superclassis ..'<br><span class="etiqueta_autoridad">' .. SuperclassisAuth .. '<span>' end
+
+	local Classis				= argumentos{'clase', 'classis'} or Taxonomia['clase']
+	local ClassisAuth			= argumentos{'clase_autoridad', 'classis_authority'}-- or Taxonomia['']
+	if SuperclassisAuth then Superclassis = Superclassis ..'<br><span class="etiqueta_autoridad">' .. SuperclassisAuth .. '<span>' end
+
+	local Subclassis			= argumentos{'subclase', 'subclassis'} or Taxonomia['subclase']
+	local SubclassisAuth		= argumentos{'subclase_autoridad', 'subclassis_authority'}-- or Taxonomia['']
+	if SubclassisAuth then Subclassis = Subclassis ..'<br><span class="etiqueta_autoridad">' .. SubclassisAuth .. '<span>' end
+
+	local Infraclassis			= argumentos{'infraclase', 'infraclassis'} or Taxonomia['infraclase']
+	local InfraclassisAuth		= argumentos{'infraclase_autoridad', 'infraclassis_authority'}-- or Taxonomia['']
+	if InfraclassisAuth then Infraclassis = Infraclassis ..'<br><span class="etiqueta_autoridad">' .. InfraclassisAuth .. '<span>' end
+
+	local OrdoUn				= argumentos{'orden_sin_clasificar', 'unranked_ordo'}-- or Taxonomia['']
+	local OrdoUnAuth			= argumentos{'orden_sin_clasificar_autoridad', 'unranked_ordo_authority'}-- or Taxonomia['']
+	if OrdoUnAuth then OrdoUn = OrdoUn ..'<br><span class="etiqueta_autoridad">' .. OrdoUnAuth .. '<span>' end
+
+	local Magnordo				= argumentos{'magnoorden', 'magnordo'} or Taxonomia['magnoorden']
+	local MagnordoAuth			= argumentos{'magnoorden_autoridad', 'magnordo_authority'}-- or Taxonomia['']
+	if MagnordoAuth then Magnordo = Magnordo ..'<br><span class="etiqueta_autoridad">' .. MagnordoAuth .. '<span>' end
+
+	local Superordo				= argumentos{'superorden', 'superordo'} or Taxonomia['superorden']
+	local SuperordoAuth			= argumentos{'superorden_autoridad', 'superordo_authority'}-- or Taxonomia['']
+	if SuperordoAuth then Superordo = Superordo ..'<br><span class="etiqueta_autoridad">' .. SuperordoAuth .. '<span>' end
+
+	local Granordo				= argumentos{'granorden', 'granordo'}-- or Taxonomia['']
+	local GranordoAuth			= argumentos{'granorden_autoridad', 'granordo_authority'}-- or Taxonomia['']
+	if GranordoAuth then Granordo =  Granordo..'<br><span class="etiqueta_autoridad">' .. GranordoAuth .. '<span>' end
+
+	local Ordo					= argumentos{'orden', 'ordo'} or Taxonomia['orden']
+	local OrdoAuth				= argumentos{'orden_autoridad', 'ordo_authority'}-- or Taxonomia['']
+	if OrdoAuth then Ordo = Ordo ..'<br><span class="etiqueta_autoridad">' .. OrdoAuth .. '<span>' end
+
+	local Subordo				= argumentos{'suborden', 'subordo'} or Taxonomia['suborden']
+	local SubordoAuth			= argumentos{'suborden_autoridad', 'subordo_authority'}-- or Taxonomia['']
+	if SubordoAuth then Subordo = Subordo ..'<br><span class="etiqueta_autoridad">' .. SubordoAuth .. '<span>' end
+
+	local Infraordo				= argumentos{'infraorden', 'infraordo'} or Taxonomia['infraorden']
+	local InfraordoAuth			= argumentos{'infraorden_autoridad', 'infraordo_authority'}-- or Taxonomia['']
+	if InfraordoAuth then Infraordo = Infraordo ..'<br><span class="etiqueta_autoridad">' .. InfraordoAuth .. '<span>' end
+
+	local Pavordo				= argumentos{'parvorden', 'parvordo'} or Taxonomia['parvorden']
+	local PavordoAuth			= argumentos{'parvorden_autoridad', 'parvordo_authority'}-- or Taxonomia['']
+	if PavordoAuth then Pavordo = Pavordo ..'<br><span class="etiqueta_autoridad">' .. PavordoAuth .. '<span>' end
+
+	local Zoodovisio			= argumentos{'zoodivisión', 'zoodivisio'} or Taxonomia['zoodivisión']
+	local ZoodivisioAuth		= argumentos{'zoodivisión_autoridad', 'zoodivisio_authority'}-- or Taxonomia['']
+	if ZoodovisioAuth then Zoodovisio = Zoodovisio ..'<br><span class="etiqueta_autoridad">' .. ZoodovisioAuth .. '<span>' end
+
+	local Zoosectio				= argumentos{'zoosectión', 'zoosectio'} or Taxonomia['zoosectión']
+	local ZoosectioAuth			= argumentos{'zoosectión_autoridad', 'zoosectio_authority'}-- or Taxonomia['']
+	if ZoosectioAuth then Zoosectio = Zoosectio ..'<br><span class="etiqueta_autoridad">' .. ZoosectioAuth .. '<span>' end
+
+	local Zoosubsectio			= argumentos{'zoosubsectión', 'zoosubsectio'} or Taxonomia['oosubsectión']
+	local ZoosubsectioAuth		= argumentos{'zoosubsectión_autoridad', 'zoosubsectio_authority'}-- or Taxonomia['']
+	if ZoosubsectioAuth then Zoosubsectio = Zoosubsectio ..'<br><span class="etiqueta_autoridad">' .. ZoosubsectioAuth .. '<span>' end
+
+	local FamiliaUn				= argumentos{'familia_sin_clasificar', 'unranked_familia'}-- or Taxonomia['']
+	local FamiliaAuthUn			= argumentos{'familia_sin_clasificar_autoridad', 'unranked_familia_authority'}-- or Taxonomia['']
+	if FamiliaUnAuth then FamiliaUn = FamiliaUn ..'<br><span class="etiqueta_autoridad">' .. FamiliaUnAuth .. '<span>' end
+
+	local Superfamilia			= argumentos{'superfamilia'} or Taxonomia['superfamilia']
+	local SuperfamiliaAuth		= argumentos{'superfamilia_autoridad', 'superfamilia_authority'}-- or Taxonomia['']
+	if SuperfamiliaAuth then Superfamilia = Superfamilia ..'<br><span class="etiqueta_autoridad">' .. SuperfamiliaAuth .. '<span>' end
+
+	local Familia				= argumentos{'familia'} or Taxonomia['familia']
+	local FamiliaAuth			= argumentos{'familia_autoridad', 'familia_authority'}-- or Taxonomia['']
+	if FamiliaAuth then Familia = Familia ..'<br><span class="etiqueta_autoridad">' .. FamiliaAuth .. '<span>' end
+
+	local Subfamilia			= argumentos{'subfamilia'} or Taxonomia['subfamilia']
+	local SubfamiliaAuth		= argumentos{'subfamilia_autoridad', 'subfamilia_authority'}-- or Taxonomia['']
+	if SubfamiliaAuth then Subfamilia = Subfamilia ..'<br><span class="etiqueta_autoridad">' .. SubfamiliaAuth .. '<span>' end
+
+	local Supertribus			= argumentos{'supertribu', 'supertribus'} or Taxonomia['supertribu']
+	local SupertribusAuth		= argumentos{'supertribu_autoridad', 'supertribus_authority'}-- or Taxonomia['']
+	if SupertribusAuth then Supertribus = Supertribus ..'<br><span class="etiqueta_autoridad">' .. SupertribusAuth .. '<span>' end
+
+	local Tribus				= argumentos{'tribu', 'tribus'} or Taxonomia['tribu']
+	local TribusAuth			= argumentos{'tribu_autoridad', 'tribus_authority'}-- or Taxonomia['']
+	if TribusAuth then Tribus = Tribus ..'<br><span class="etiqueta_autoridad">' .. TribusAuth .. '<span>' end
+
+	local Subtribus				= argumentos{'subtribu', 'subtribus'} or Taxonomia['subtribu']
+	local SubtribusAuth			= argumentos{'subtribu_autoridad', 'subtribus_authority'}-- or Taxonomia['']
+	if SubtribusAuth then Subtribus = Subtribus ..'<br><span class="etiqueta_autoridad">' .. SubtribusAuth .. '<span>' end
+
+	local Alliance				= argumentos{'alianza', 'alliance'} or Taxonomia['alianza']
+	local AllianceAuth			= argumentos{'alianza_autoridad', 'alliance_authority'}-- or Taxonomia['']
+	if AllianceAuth then Alliance = Alliance ..'<br><span class="etiqueta_autoridad">' .. AllianceAuth .. '<span>' end
+
+	local GenusUn				= argumentos{'género_sin_clasificar', 'unranked_genus'}-- or Taxonomia['']
+	local GenusUnAuth			= argumentos{'género_sin_clasificar_autoridad', 'unranked_genus_authority'}-- or Taxonomia['']
+	if GenusUnAuth then GenusUn = GenusUn ..'<br><span class="etiqueta_autoridad">' .. GenusUnAuth .. '<span>' end
+
+	local Genus					= argumentos{'género', 'genus'} or Taxonomia['género']
+	local GenusAuth				= argumentos{'género_autoridad', 'genus_authority'} or Taxonomia['género_autoridad']
+	if GenusAuth then Genus = Genus ..'<br><span class="etiqueta_autoridad">' .. GenusAuth .. '<span>' end
+
+	local Subgenus				= argumentos{'subgénero', 'subgenus'} or Taxonomia['subgénero']
+	local SubgenusAuth			= argumentos{'subgénero_autoridad', 'subgenus_authority'}-- or Taxonomia['']
+	if SubgenusAuth then Subgenus = Subgenus ..'<br><span class="etiqueta_autoridad">' .. SubgenusAuth .. '<span>' end
+
+	local Sectio				= argumentos{'sección', 'sectio'} or Taxonomia['sección']
+	local SectioAuth			= argumentos{'sección_autoridad', 'sectio_authority'}-- or Taxonomia['']
+	if SectioAuth then Sectio = Sectio ..'<br><span class="etiqueta_autoridad">' .. SectioAuth .. '<span>' end
+
+	local Series				= argumentos{'serie', 'series'} or Taxonomia['serie']
+	local SeriesAuth			= argumentos{'serie_autoridad', 'series_authority'}-- or Taxonomia['']
+	if SeriesAuth then Series = Series ..'<br><span class="etiqueta_autoridad">' .. SeriesAuth .. '<span>' end
+
+	local SeriesGroup			= argumentos{'grupo_específico', 'species_group'} or Taxonomia['grupo_específico']
+	local SeriesGroupAuth		= argumentos{'grupo_específico_autoridad', 'species_group_authority'}-- or Taxonomia['']
+	if SeriesGroupAuth then SeriesGroup = SeriesGroup ..'<br><span class="etiqueta_autoridad">' .. SeriesGroupAuth .. '<span>' end
+
+	local SpeciesSubgroup		= argumentos{'subgrupo_específico', 'species_subgroup'} or Taxonomia['subgrupo_específico']
+	local SpeciesSubgroupAuth	= argumentos{'subgrupo_específico_autoridad', 'species_subgroup'}-- or Taxonomia['']
+	if SpeciesSubgroupAuth then SpeciesSubgroup = SpeciesSubgroup ..'<br><span class="etiqueta_autoridad">' .. SpeciesSubgroupAuth .. '<span>' end
+
+	local SpeciesComplex		= argumentos{'complejo_específico', 'species_complex'} or Taxonomia['complejo_específico']
+	local SpeciesComplexAuth	= argumentos{'complejo_específico_autoridad', 'species_complex_authority'}-- or Taxonomia['']
+	if SpeciesComplexAuth then SpeciesComplex = SpeciesComplex ..'<br><span class="etiqueta_autoridad">' .. SpeciesComplexAuth .. '<span>' end
+
+	local Species				= argumentos{'especie', 'species', 'binominal'} or Taxonomia['especie']
+	local SpeciesAuth			= argumentos{'especie_autoridad', 'binominal_autoridad', 'species_authority', 'binominal_authority'} or Taxonomia['especie_autoridad']
+	if SpeciesAuth then Species = Species ..'<br><span class="etiqueta_autoridad">' .. SpeciesAuth .. '<span>' end
+
+	local Subspecies			= argumentos{'subespecie', 'subspecies', 'trinominal'} or Taxonomia['subespecie']
+	local SubspeciesAuth		= argumentos{'subespecie_autoridad', 'trinominal_autoridad', 'subspecies_authority', 'trinominal_authority'} or Taxonomia['subespecie_autoridad']
+	if SubspeciesAuth then Subspecies = Subspecies ..'<br><span class="etiqueta_autoridad">' .. SubspeciesAuth .. '<span>' end
+	
+	local Cepa					= argumentos{'cepa', 'strain'} or Taxonomia['cepa']
+	local CepaAuth				= argumentos{'Cepa_autoridad', 'strain_authority'} or Taxonomia['cepa_autoridad']
+	if CepaAuth then Cepa		= Cepa ..'<br><span class="etiqueta_autoridad">' .. CepaAuth .. '<span>' end
+
+	local Diversity				= argumentos{'diversidad', 'diversity'}-- or Taxonomia['']
+	local SiversityLink			= argumentos{'diversidad_enlace', 'diversity_link'}-- or Taxonomia['']
+
+	local TypeSpecies			= argumentos{'especie_tipo', 'type_species'}-- or Taxonomia['']
+	local TypeSpeciesAuth		= argumentos{'especie_tipo_autoridad', 'type_species_authority'}-- or Taxonomia['']
+	if TypeSpeciesAuth then TypeSpecies = TypeSpecies ..'<br><span class="etiqueta_autoridad">' .. TypeSpeciesAuth .. '<span>' end
+
+	local Binomial2				= argumentos{'binomial2', 'binomial2'}-- or Taxonomia['']
+	local Binomial2Auth			= argumentos{'binomial2_autoridad', 'binomial2_authority'}-- or Taxonomia['']
+	if Binomial2Auth then Binomial2 = Binomial2 ..'<br><span class="etiqueta_autoridad">' .. Binomial2Auth .. '<span>' end
+
+	local Trinomial2			= argumentos{'trinomial2', 'trinomial2'}-- or Taxonomia['']
+	local Trinomial2Auth		= argumentos{'trinomial2_autoridad', 'trinomial2_authority'}-- or Taxonomia['']
+	if Trinomial2Auth then Trinomial2 = Trinomial2 ..'<br><span class="etiqueta_autoridad">' .. Trinomial2Auth .. '<span>' end
+
+	local Binomial3				= argumentos{'binomial3', 'binomial3'}-- or Taxonomia['']
+	local Binomial3Auth			= argumentos{'binomial3_autoridad', 'binomial3_authority'}-- or Taxonomia['']
+	if Binomial3Auth then Binomial3 = Binomial3 ..'<br><span class="etiqueta_autoridad">' .. Binomial3Auth .. '<span>' end
+
+	local Trinomial3			= argumentos{'trinomial3', 'trinomial3'}-- or Taxonomia['']
+	local Trinomial3Auth		= argumentos{'trinomial3_autoridad', 'trinomial3_authority'}-- or Taxonomia['']
+	if Trinomial3Auth then Trinomial3 = Trinomial3 ..'<br><span class="etiqueta_autoridad">' .. Trinomial3Auth .. '<span>' end
+
+	local Trinomial4			= argumentos{'trinomial4', 'trinomial4'}-- or Taxonomia['']
+	local Trinomial4Auth		= argumentos{'trinomial4_autoridad', 'trinomial4'}-- or Taxonomia['']
+	if Trinomial4Auth then Trinomial4 = Trinomial4 ..'<br><span class="etiqueta_autoridad">' .. Trinomial4Auth .. '<span>' end
+
+	-- Subdivisiones
+	local TaxonomiaInferior		= obtenerTaxonomiaInferior(Taxonomia) or {}
+	local SubdivisionesTitulo	= TaxonomiaInferior[1]
+	local Subdivisiones			= TaxonomiaInferior[2]
+	local Gen					= TaxonomiaInferior[3]
+	if Subdivisiones then
+		if string.len(Subdivisiones) > 200 then Subdivisiones = seccionDesplegable(frame, 'Vari' .. Gen .. 's', Subdivisiones) end
+	end
+
+	if not SubdivisionesTitulo or not Subdivisiones then SubdivisionesTitulo, Subdivisiones = '' end
+
+	local Synonyms				= argumentos{'sinónimos', 'synonyms'} or Taxonomia['sinónimos']
+
+	local RangoFosil
+	if InstanciaDeID == 'Q23038290' then
+		RangoFosil			= obtenerRangoFosil(frame)
+	end
+
+	-- Datos generales
+	local TaxonomiaTitulo
+	local GrupoVirus			= obtenerGrupoVirus()
+	if GrupoVirus or esVirus(Domain) or esVirus(Regnum) then
+		TaxonomiaTitulo			= '[[Virus#Clasificación|Clasificación de los virus]]'
+	else
+		TaxonomiaTitulo			= '[[Taxonomía]]'
+	end
+
+	local EstadoConservacionCategoria = Ordo or Subclassis or Classisr or ClassisUn or Subphylum or Phylum or Divisio or Regnum
+	local EstadoConservacion	= obtenerEstadoConservacion(frame, EstadoConservacionCategoria)
+
+	--:: Datos morfológicos
+	local Morfologia		= argumentos{'morfología'}
+	local DimorfismoSexual	= argumentos{'dimorfismo sexual'}
+	local Tamano			= argumentos{'tamaño'}
+	local Dimensiones		= argumentos{'dimensiones'}
+	local Largo				= argumentos{'largo'}
+	local Alto				= argumentos{'alto'}
+	local Peso				= obtenerPeso()
+	local Pelaje			= argumentos{'pelaje'}
+	local Plumaje			= argumentos{'plumaje'}
+	local Cuernos			= argumentos{'cuernos'}
+	local Cabeza			= argumentos{'cabeza'}
+	local Boca				= argumentos{'boca'}
+	local Ojos				= argumentos{'ojos'}
+	local Orejas			= argumentos{'orejas'}
+	local Cola				= argumentos{'cola', 'rabo'}
+	local Patas				= argumentos{'patas'}
+	local Pico				= argumentos{'pico'}
+	local Caracter			= argumentos{'carácter'}
+
+	if not Dimensiones then
+		local Anchura		= propiedad('P2043', {['formato'] = 'unidad'})
+		local Altura		= propiedad('P2048', {['formato'] = 'unidad'})
+	end
+	
+	--:: Datos clínicos
+	local CausaDe			= argumentos{'causade', {propiedad, 'P1542', {['lista'] = 'nobullet'}}}
+	local Huesped			= argumentos{'huésped', {propiedad, 'P2975', {['lista'] = 'nobullet'}}}
+	local ProcesoTransision	= argumentos{'proceso_transmision'}
+
+	-- :: Datos genéticos
+	local TamanoGenoma		= argumentos{'tamaño_genoma', {propiedad, 'P2143', {['formato'] = 'unidad'}}}
+
+	local RegionDescubrimiento	= argumentos{'region'}
+	local FechaDescubrimiento	= argumentos{'fecha'}
+	
+	local EstadoConservacionCategoria = Ordo or Subclassis or Classisr or ClassisUn or Subphylum or Phylum or Divisio or Regnum
+	local EstadoConservacion	= obtenerEstadoConservacion(frame, EstadoConservacionCategoria, RegionDescubrimiento)
+
+	--:: Otros
+	local Utilizacion			= argumentos{'utilización'}
+	local Notas					= argumentos{'notas', 'notes'}
+
+	-- :: Datos de estilo
+	-- Formatos
+	if Data['colores'][Domain] or Data['colores'][Regnum] then
+		ColorTituloFondo	= Data['colores'][Domain] or Data['colores'][Regnum]
+	end
+	
+	--:: Estilos
+	EstiloSeccion	= 'background-color:' .. ColorTituloFondo
+	EstiloEtiqueta	= EstiloEtiqueta .. 'background-color:' .. ColorTituloFondo
+
+	-- :: La ficha
+	local TablaFicha = {
+		titulo  			= NombreComunTitulo,
+		subtitulo			= RangoFosil,
+		colorfondo			= ColorTituloFondo,
+		estiloseccion		= EstiloSeccion,
+		estiloetiqueta		= EstiloEtiqueta,
+		imagen				= Imagen,
+		["tamañoimagen"]	= TamanoImagen,
+		imagen2				= Imagen2,
+		["tamañoimagen2"]	= TamanoImagen,
+		pie					= Pie,
+		pie2				= Pie2,
+		estilopie			= "font-size:88%",
+		estilopie2			= "font-size:88%",
+--		{tipo="sección",
+--			{"[[Nombre común]]", NombreComunDato},
+--			{"[[Nombre científico]]", NombreTaxon},
+--		},
+		{tipo="sección",
+			titulo = "Estado de conservación",
+			{"", EstadoConservacion},
+		},
+		{tipo="sección",
+			titulo = TaxonomiaTitulo,
+			estilodatos = EstiloDatos .. 'font-style:italic',
+			{"[[Dominio (biología)|Dominio]]", Domain},
+			{"Superreino", Superregnum},
+			{"[[Reino (biología)|Reino]]", Regnum},
+			{"Subreino", Subregnum},
+			{"Superfilo", Superphylum},
+			{"[[División (biología)|División]]", Divisio},
+			{"[[Filo]]", Phylum},
+			{"Subdivisión", Subdivisio},
+			{"Subfilo", Subphylum},
+			{"Infrafilo", Infraphylum},
+			{"Microfilo", Microphylum},
+			{"Nanofilo", Nanophylum},
+			{"Superclase", Superclassis},
+			{"[[Clase (biología)|Clase]]", Classis},
+			{"Subclase", Subclassis},
+			{"Infraclase", Infraclassis},
+			{"Magnoorden", Magnordo},
+			{"Superorden", Superordo},
+			{"Granorden", Granordo},
+			{"[[Orden (biología)|Orden]]", Ordo},
+			{"Suborden", Subordo},
+			{"Infraorden", Infraordo},
+			{"Pavorden", Pavordo},
+			{"Zoodivisión", Zoodovisio},
+			{"Zoosección", Zoosectio},
+			{"Zoosubsección", Zoosubsectio},
+			{"Superfamilia", Superfamilia},
+			{"[[Familia (biología)|Familia]]", Familia},
+			{"Subfamilia", Subfamilia},
+			{"Supertribu", Supertribus},
+			{"[[Tribu (biología)|Tribu]]", Tribus},
+			{"Subtribus", Subtribus},
+			{"Alianza", Alliance},
+			{"[[Género (biología)|Género]]", Genus},
+			{"Subgénero", Subgenus},
+			{"Sección", Sectio},
+			{"Serie", Series},
+			{"Grupo específico", SeriesGroup},
+			{"Subgrupo específico", SpeciesSubgroup},
+			{"Complejo específico", SpeciesComplex},
+			{"[[Especie]]", Species},
+			{"Subespecie", Subspecies},
+			{"[[Cepa]]", Cepa},
+		},
+		{tipo="sección",
+			titulo = SubdivisionesTitulo,
+			estilodatos = "text-align:left;",
+			{"", Subdivisiones},
+		},
+		{tipo="sección",
+			titulo = "[[Sinonimia (biología)|Sinonimia]]",
+			{"", Synonyms},
+		},
+		{tipo="sección",
+			titulo = "[[Genética|Datos genéticos]]",
+			estilodatos = "text-align:left;",
+			{"[[Clasificación_de_Baltimore|Grupo]]", GrupoVirus},
+			{"[[Genoma#Tamaño_del_genoma|Tamaño del genoma]]", TamanoGenoma},
+		},
+		{tipo="sección",
+			titulo = "[[Signo clínico|Datos clínicos]]",
+			estilodatos = "text-align:left;",
+			{"Causa de", CausaDe},
+			{"[[Huésped (biología)|Huéspedes]]", Huesped},
+		},
+		{tipo="sección",
+			titulo = "[[Área biogeográfica|Distribución]]",
+			{"",Distribucion},
+			{"", Mapa},
+			{"", MapaPie},
+			{"", MapaLeyenda},
+			{"",Binomial2},
+			{"",Binomial2Autoridad},
+			{"",Trinomial2},
+			{"",Trinomial2Autoridad},
+			{"", Mapa2},
+			{"", Mapa2Pie},
+			{"", Mapa2Leyenda},
+
+			{"",Binomial3},
+			{"",Binomial3Autoridad},
+			{"",Trinomial3},
+			{"",Trinomial3Autoridad},
+			{"", Mapa3},
+			{"", Mapa3Pie},
+			{"", Mapa3Leyenda},
+
+			{"",Binomial4},
+			{"",Binomial4Autoridad},
+			{"",Trinomial4},
+			{"",Trinomial4Autoridad},
+			{"", Mapa4},
+			{"", Mapa4Pie},
+			{"", Mapa4Leyenda},
+		},
+		{tipo="sección",
+			titulo = "Notas",
+			{"", Notas},
+		},
+		{tipo="sección",
+			titulo = "Debug",
+			{"", Debug},
+		},
+	}
+
+	return Ficha(TablaFicha)
+end
+
+function p.FichaRaza(frame)
+	-- :: Inicializardor
+	_init(frame)
+
+	-- :: Datos de razas
+	-- Razas
+	local Raza = obtenerRaza(argumentos{'raza'} or InstanciaDeID)
+	local NombreCientifico
+	local RazaTitulo
+	if Raza[1] and Raza[2] then
+		NombreCientifico		= "''" .. Raza[1] .. "''"
+		RazaTitulo				= "''" .. Raza[2] .. "''"
+	end
+	
+	-- Federaciones
+	local FederacionesLista		= argumentos{'federaciones'}
+	if not FederacionesLista then
+		FederacionesLista = {}
+		-- Gatos
+		FederacionesLista['CFA']	= argumentos{'CFA', 'cfastd'}
+		FederacionesLista['TICA']	= argumentos{'TICA', 'ticastd'}
+		FederacionesLista['WCF']	= argumentos{'WCF', 'wcfstd'}
+		FederacionesLista['ACF']	= argumentos{'ACF', 'acfstd'}
+		FederacionesLista['CCA']	= argumentos{'CCA', 'ccastd'}
+		FederacionesLista['CCCofA']	= argumentos{'CCCOFA', 'cccastd'}
+		FederacionesLista['CFF']	= argumentos{'CFF', 'cffstd'}
+		FederacionesLista['GCCF']	= argumentos{'GCCF', 'gccfstd'}
+		FederacionesLista['LOOF']	= argumentos{'LOOF', 'loofstd'}
+		FederacionesLista['NZCF']	= argumentos{'NZCF', 'nzcfstd'}
+		FederacionesLista['SACC']	= argumentos{'SACC', 'saccstd'}
+		FederacionesLista['FIFe']	= argumentos{'FIFE', 'fifestd1', 'fifeterm1', 'fifestd2', 'fifeterm2'}
+		FederacionesLista['ACFA']	= argumentos{'ACFA', 'acfastd1', 'acfaterm1', 'acfastd2', 'acfaterm2'}
+		--FederacionesLista['FFE']	= argumentos{'FFE', 'ffestd'}
+		--FederacionesLista['AACE']	= argumentos{'AACE', 'aacestd'}
+		--FederacionesLista['IPCBA']	= argumentos{'IPCBA', 'ipcbastd'}
+
+		-- Perros
+		FederacionesLista['ACA']	= argumentos{'ACA'} --American Canine Association
+		FederacionesLista['AKC']	= argumentos{'AKC'} --American Kennel Club
+		FederacionesLista['CAKC']	= argumentos{'CKC'} --Canadian Kennel Club
+		FederacionesLista['UKC']	= argumentos{'UKC'} --United Kennel Club
+		FederacionesLista['ASDR']	= argumentos{'ASDR'} --American Stock Dog Registry
+		FederacionesLista['ANKC']	= argumentos{'ANKC'} --Australian National Kennel Council
+		--FederacionesLista['BCSA']	= argumentos{'BCSA'}		--Border Collie Society of America
+		--FederacionesLista['BSS']	= argumentos{'BSS'}			--Boykin Spaniel Society
+		--FederacionesLista['EJRTCA']	= argumentos{'EJRTCA'}	--English Jack Russell Terrier Club Alliance, Inc
+		--FederacionesLista['FCI']	= argumentos{'FCI'}			--Federation Cynological International
+		--FederacionesLista['FDSB']	= argumentos{'FDSB'}		--Field Dog Stud Book
+		--FederacionesLista['IBC']	= argumentos{'IBC'}			--Internationaler Biewer Yorkshire Terrier Club
+		--FederacionesLista['ICCF']	= argumentos{'ICCF'}		--International Cane Corso Federation, Inc.
+		--FederacionesLista['IOEBA']	= argumentos{'IOEBA'}	--International Olde English Bulldogge Association
+		--FederacionesLista['ISDS']	= argumentos{'ISDS'}		--International Sheepdog Society
+		--FederacionesLista['JRTCA']	= argumentos{'JRTCA'}	--Jack Russell Terrier Club of America
+		--FederacionesLista['JKC']	= argumentos{'JKC']			--Japan Kennel Club
+		--FederacionesLista['MASCA']	= argumentos{'MASCA'}	--Miniature Australian Shepherd Club of America
+		--FederacionesLista['NGA']	= argumentos{'NGA'}			--National Greyhound Association
+		--FederacionesLista['NKC']	= argumentos{'NKC'}			--National Kennel Club
+		--FederacionesLista['NRTA']	= argumentos{'NRTA'}		--National Rat Terrier Registry Association
+		--FederacionesLista['NSDR']	= argumentos{'NSDR'}		--National Stock Dog Registry
+		--FederacionesLista['NASS']	= argumentos{'NASS'}		--North American Sheepdog Society
+		--FederacionesLista['TKC']	= argumentos{'TKC'}			--The Kennel Club (TKC) United Kingdom
+		--FederacionesLista['UCA']	= argumentos{'UCA'}			--United Canine Association
+		--FederacionesLista['UPPCC']	= argumentos{'UPPCC'}	--United Perro de Presa Canario Club
+		--FederacionesLista['ANSCA']	= argumentos{'ANSCA'}	--Anatolian Shepherd Club of America, Inc
+		--FederacionesLista['AKCUPI']	= argumentos{'AKCUPI'}	--Asian Kennel Club Union of the Philippines
+		--FederacionesLista['ASCA']	= argumentos{'ASCA'}		--Australian Shepherd Club of America
+		--FederacionesLista['ALAA']	= argumentos{'ALAA'}		--Australian Labradoodle Association of America
+		--FederacionesLista['USKC']	= argumentos{'USKC'}		--United States Kennel Club
+		--FederacionesLista['WKC']	= argumentos{'WKC'}			--World Kennel Club
+		--FederacionesLista['WWKC']	= argumentos{'WWKC'}		--World Wide Kennel Club
+		--FederacionesLista['ABBBA']	= argumentos{'ABBBA'}	--Alapaha Blue Blood Bulldog Association
+		--FederacionesLista['ABCA']	= argumentos{'ABCA'}		--American Border Collie Association
+		--FederacionesLista['ABA']	= argumentos{'ABA'}			--American Bulldog Association
+		--FederacionesLista['ABKC']	= argumentos{'ABKC'}		--American Bully Kennel Club
+		--FederacionesLista['ADF']	= argumentos{'ADF'}			--American Dog Federation
+		--FederacionesLista['AFDR']	= argumentos{'AFDR'}		--American Field Dog Registry
+		--FederacionesLista['APBR']	= argumentos{'APBR'}		--American Pitbull Registry
+		--FederacionesLista['ARHA']	= argumentos{'ARHA'}		--American Rabbit Hound Association
+		--FederacionesLista['ARBA']	= argumentos{'ARBA'}		--American Rare Breed Association
+		--FederacionesLista['DRA']	= argumentos{'DRA'}			--Dog Registry of America
+		--FederacionesLista['IAR']	= argumentos{'IAR'}			--International Animals Registry
+		--FederacionesLista['NAMBR']	= argumentos{'NAMBR'}	--North American Mixed Breed Registry
+		--FederacionesLista['NAPDR']	= argumentos{'NAPDR'}	--North American Purebred Dog Registry
+		--FederacionesLista['UABR']	= argumentos{'UABR'}		--United All Breed Registry
+		--FederacionesLista['APR']	= argumentos{'APR'}			--American Purebred Registry
+		--FederacionesLista['APRI']	= argumentos{'APRI'}		--America's Pet Registry
+		--FederacionesLista['CKC']	= argumentos{'CKC'}			--Continental Kennel Club
+		--FederacionesLista['ADBA']	= argumentos{'ADBA'}		--American Dog Breeders Association
+	end
+	
+	local Federaciones =  ''
+	for k,v in pairs(FederacionesLista) do
+		if v then Federaciones = Federaciones .. '[' .. v .. ' ' .. k .. ']&nbsp;' end
+	end
+	
+	if not Federaciones == '' then Federaciones = '<div style="display: -webkit-flex;display: -moz-flexbox;display: -ms-flexbox;display: flex;-webkit-justify-content: space-between;-moz-justify-content: space-between;-ms-justify-content: space-between;justify-content: space-between;">' .. Federaciones .. '</div>' end
+
+	--:: Datos morfológicos
+	local Morfologia		= argumentos{'morfología'}
+	local DimorfismoSexual	= argumentos{'dimorfismo sexual'}
+	local Tamano			= argumentos{'tamaño'}
+	local Dimensiones		= argumentos{'dimensiones'}
+	local Largo				= argumentos{'largo'}
+	local Alto				= argumentos{'alto'}
+	local Peso				= obtenerPeso()
+	local Pelaje			= argumentos{'pelaje'}
+	local Plumaje			= argumentos{'plumaje'}
+	local Cuernos			= argumentos{'cuernos'}
+	local Cabeza			= argumentos{'cabeza'}
+	local Boca				= argumentos{'boca'}
+	local Ojos				= argumentos{'ojos'}
+	local Orejas			= argumentos{'orejas'}
+	local Cola				= argumentos{'cola', 'rabo'}
+	local Patas				= argumentos{'patas'}
+	local Pico				= argumentos{'pico'}
+	local Caracter			= argumentos{'carácter'}
+
+	local RegionDescubrimiento	= argumentos{'región', 'region'}
+	local FechaDescubrimiento	= argumentos{'fecha'}
+
+	--:: Estilos
+	EstiloSeccion	= 'background-color:' .. ColorTituloFondo
+	EstiloEtiqueta	= EstiloEtiqueta .. 'background-color:' .. ColorTituloFondo
+
+	-- :: La ficha
+	local TablaFicha = {
+		titulo  			= Titulo,
+		subtitulo			= RazaTitulo,
+		colorfondo			= ColorTituloFondo,
+		estilosubtitulo		= EstiloTitulo,
+		estiloseccion		= EstiloSeccion,
+		estiloetiqueta		= EstiloEtiqueta,
+		imagen				= Imagen,
+		["tamañoimagen"]	= TamanoImagen,
+		imagen2				= Imagen2,
+		["tamañoimagen2"]	= TamanoImagen,
+		pie					= Pie,
+		pie2				= Pie2,
+		estilopie			= "font-size:88%",
+		estilopie2			= "font-size:88%",
+		{tipo="sección",
+			titulo = "Características",
+			--estiloseccion	= EstiloSeccion,
+			{"[[Nomenclatura binominal]]", NombreCientifico},
+			{"Otros nombres", NombreComun},
+			{"Región de origen", RegionDescubrimiento},
+			{"Primeros registros", FechaDescubrimiento},
+			{"[[Morfología (biología)|Morfología]]", Morfologia},
+			{"[[Dimorfismo sexual]]", DimorfismoSexual},
+			{"Tamaño", Tamano},
+			{"Dimensiones", Dimensiones},
+			{"Anchura", Anchura},
+			{"Altura", Altura},
+			{"[[Peso]]", Peso},
+			{"[[Pelaje]]", Pelaje},
+			{"[[Plumaje]]", Plumaje},
+			{"[[Cuernos]]'", Cuernos},
+			{"[[Cabeza]]", Cabeza},
+			{"[[Boca]]", Boca},
+			{"[[Ojos]]", Ojos},
+			{"[[Pico]]", Pico},
+			{"[[Orejas]]", Orejas},
+			{"[[Cola]]", Cola},
+			{"[[Patas]]", Patas},
+			{"[[Pico (zoología)|Pico]]", Pico},
+			{"[[Carácter biológico|Carácter]]", Caracter},
+			{"Utilización", Utilizacion},
+		},
+		{tipo="sección",
+			titulo = "[[Área biogeográfica|Difusión]]",
+			{"", Distribucion},
+			{"", Mapa},
+			{"", MapaPie},
+			{"", MapaLeyenda},
+		},
+		{tipo="sección",
+			--titulo = "[[Registro de razas|Federaciones]]",
+			titulo = "Federaciones",
+			-- Gatos
+			{"", Federaciones},
+			{"", OtrasFederaciones},
+		},
+		{tipo="sección",
+			titulo = "Notas",
+			{"", Notas},
+		},
+		{tipo="sección",
+			titulo = "Debug",
+			{"", Debug},
+		},
+	}
+	
+	return Ficha(TablaFicha)
+end
+
+function p.FichaFosil(frame)
+	-- :: Inicializardor
+	_init(frame)
+	
+	--:: Tabla de datos
+	local RangoFosil		= obtenerRangoFosil(frame)
+
+	--:: Datos generales
+	local NombreComun		= argumentos{'nombre_común', 'nombre común', {propiedad, 'P1843', {['lista'] = 'nobullet', ['idioma'] = 'es'}}, {ModuloWikidata.obtenerEtiquetaWikidata, Entidad}, {ModuloPaginas.nombrePagina,{desambiguar='sí'}}}
+	local NombreCatalogo	= argumentos{'catálogo', 'name', 'nombre', {propiedad, 'P217', {['lista'] = 'nobullet'}}} or NombreComun
+	local Especie			= argumentos{'especie', {propiedad, 'P361'}}
+	local Antiguedad		= argumentos{'antigüedad', {propiedad, 'P7584', {['formato'] = 'unidad'}}}
+
+	--:: Datos geográficos y temporales
+	local RegionDescubrimiento	= argumentos{'region', 'lugar', {propiedad, 'P189'}}
+	local FechaDescubrimiento	= argumentos{'fecha', {propiedad, 'P575'}}
+	local Descubridor			= argumentos{'descubridor', {propiedad, 'P61'}}
+	local DescritoPor			= argumentos{'descriptor', {propiedad, 'P405'}}
+	local FechaDescripcion		= argumentos{'fecha_descripción', {propiedad, 'P574'}}
+	local Conservacion			= argumentos{'lugar_conservación'}
+	
+	local Notas					= argumentos{'notas', 'notes'}
+
+	--:: Estilos
+	ColorTituloFondo	= '#e6e6e6'
+	ColorEtiqueta		= '#f2f2f2'
+	EstiloSeccion	= 'background-color:' .. ColorTituloFondo
+	EstiloEtiqueta		= EstiloEtiqueta .. 'background-color:' .. ColorTituloFondo
+
+	-- :: La ficha
+	local TablaFicha = {
+		titulo  			= NombreCatalogo,
+		subtitulo			= RangoFosil,
+		estilosubtitulo		='height:100px',
+		colorfondo			= ColorTituloFondo,
+		estiloseccion		= EstiloSeccion,
+		estiloetiqueta		= EstiloEtiqueta,
+		imagen				= Imagen,
+		["tamañoimagen"]	= TamanoImagen,
+		pie					= Pie,
+		estilopie			= "font-size:88%",
+		{tipo="sección",
+			titulo = "Información general",
+			{"Nombre común", NombreComun},
+			{"Especie", Especie},
+			{"Antigüedad", Antiguedad},
+			{"Descubrimiento", FechaDescubrimiento},
+			{"Lugar de descubrimiento", RegionDescubrimiento},
+			{"Descubierto por", Descubridor},
+			{"Descrito por", DescritoPor},
+			{"Descripción", FechaDescripcion},
+			{"Conservación", Conservacion},
+			{"", Notas},
+		},
+		{tipo="sección",
+			titulo = "Debug",
+			{"", Debug},
+		},
+	}
+	return Ficha(TablaFicha)
+end
+
+function p.FichaFungi(frame)
+	-- :: Inicializardor
+	_init(frame)
+
+	Titulo			= "<small>Características micológicas</small><div style=\"float:right; valign:top\"><small>[[Archivo:Symbol question.svg|16px|link=Plantilla:Ficha de fungi/doc]]</small></div><br />''" .. Titulo .. "''"
+
+	local Himenio	= {}
+	local Himenio1	= argumentos{'himenio', 'hymeniumType', {propiedad, 'P783', {['formato'] = 'entidadID'}}} or 'default'
+	local Himenio2	= argumentos{'himenio2', 'hymeniumType2', {propiedad, 'P783', {['formato'] = 'entidadID', ['valor_posicional'] = 2}}}
+	if Data['fungi']['himenio'][Himenio1] then
+		table.insert(Himenio, '[[File:' .. Data['fungi']['himenio'][Himenio1][1] .. '|25px|link=]]')
+		if Data['fungi']['himenio'][Himenio2] then table.insert(Himenio, '[[File:' .. Data['fungi']['himenio'][Himenio2][1] .. '|25px|link=]]') end
+		table.insert(Himenio, '[[Himenio]]&nbsp;' .. Data['fungi']['himenio'][Himenio1][2])
+		if Data['fungi']['himenio'][Himenio2] then table.insert(Himenio, 'o&nbsp;' .. Data['fungi']['himenio'][Himenio2][2]) end
+	end
+	Himenio = table.concat(Himenio, '&nbsp;')
+
+	local Sombrero	= {}
+	local Sombrero1	= argumentos{'sombrero', 'capShape', {propiedad, 'P784', {['formato'] = 'entidadID'}}} or 'default'
+	local Sombrero2	= argumentos{'sombrero2', 'capShape2', {propiedad, 'P784', {['formato'] = 'entidadID', ['valor_posicional'] = 2}}}
+	if Data['fungi']['sombrero'][Sombrero1] then
+		table.insert(Sombrero, '[[File:' .. Data['fungi']['sombrero'][Sombrero1][1] .. '|25px|link=]]')
+		if Data['fungi']['sombrero'][Sombrero2] then table.insert(Sombrero, '[[File:' .. Data['fungi']['sombrero'][Sombrero2][1] .. '|25px|link=]]') end
+		table.insert(Sombrero, '[[píleo (micología)|Sombrero]]&nbsp;' .. Data['fungi']['sombrero'][Sombrero1][2])
+		if Data['fungi']['sombrero'][Sombrero2] then table.insert(Sombrero, 'o&nbsp;' .. Data['fungi']['sombrero'][Sombrero2][2]) end
+	end
+	Sombrero = table.concat(Sombrero, '&nbsp;')
+
+	local Laminas	= {}
+	local Laminas1	= argumentos{'láminas', 'whichGills', {propiedad, 'P785', {['formato'] = 'entidadID'}}} or 'default'
+	local Laminas2	= argumentos{'láminas2', 'whichGills2', {propiedad, 'P785', {['formato'] = 'entidadID', ['valor_posicional'] = 2}}}
+	if Data['fungi']['láminas'][Laminas1] then
+		table.insert(Laminas, '[[File:' .. Data['fungi']['láminas'][Laminas1][1] .. '|25px|link=]]')
+		if Data['fungi']['láminas'][Laminas2] then table.insert(Laminas, '[[File:' .. Data['fungi']['láminas'][Laminas2][1] .. '|25px|link=]]') end
+		table.insert(Laminas, '[[Láminas (micología)|Láminas]]&nbsp;' .. Data['fungi']['láminas'][Laminas1][2])
+		if Data['fungi']['láminas'][Laminas2] then table.insert(Laminas, 'o&nbsp;' .. Data['fungi']['láminas'][Laminas2][2]) end
+	end
+	Laminas = table.concat(Laminas, '&nbsp;')
+
+	local Velo	= {}
+	local Velo1	= argumentos{'velo', 'stipeCharacter', {propiedad, 'P786', {['formato'] = 'entidadID'}}} or 'default'
+	local Velo2	= argumentos{'velo2', 'stipeCharacter2', {propiedad, 'P786', {['formato'] = 'entidadID', ['valor_posicional'] = 2}}}
+	if Data['fungi']['velo'][Velo1] then
+		table.insert(Velo, '[[File:' .. Data['fungi']['velo'][Velo1][1] .. '|25px|link=]]')
+		if Data['fungi']['velo'][Velo2] then table.insert(Velo, '[[File:' .. Data['fungi']['velo'][Velo2][1] .. '|25px|link=]]') end
+		table.insert(Velo, '[[estipe (micología)|Pie]]&nbsp;' .. Data['fungi']['velo'][Velo1][2])
+		if Data['fungi']['velo'][Velo2] then table.insert(Velo, 'o&nbsp;' .. Data['fungi']['velo'][Velo2][2]) end
+	end
+	Velo = table.concat(Velo, '&nbsp;')
+
+	local ColorEspora	= {}
+	local ColorEspora1	= argumentos{'colorEspora', 'sporePrintColor', {propiedad, 'P787', {['formato'] = 'entidadID'}}} or 'default'
+	local ColorEspora2	= argumentos{'colorEspora2', 'sporePrintColor2', {propiedad, 'P787', {['formato'] = 'entidadID', ['valor_posicional'] = 2}}}
+	if Data['fungi']['color_espora'][ColorEspora1] then
+		table.insert(ColorEspora, '[[File:' .. Data['fungi']['color_espora'][ColorEspora1][1] .. '|25px|link=]]')
+		if Data['fungi']['color_espora'][ColorEspora2] then table.insert(ColorEspora, '[[File:' .. Data['fungi']['color_espora'][ColorEspora2][1] .. '|25px|link=]]') end
+		table.insert(ColorEspora, '[[Espora]]s de color&nbsp;' .. Data['fungi']['color_espora'][ColorEspora1][2])
+		if Data['fungi']['color_espora'][ColorEspora2] then table.insert(ColorEspora, 'o&nbsp;' .. Data['fungi']['color_espora'][ColorEspora2][2]) end
+	end
+	ColorEspora = table.concat(ColorEspora, '&nbsp;')
+
+	local Ecologia	= {}
+	local Ecologia1	= argumentos{'ecología', 'ecologicalType', {propiedad, 'P788', {['formato'] = 'entidadID'}}} or 'default'
+	local Ecologia2	= argumentos{'ecología2', 'ecologicalType2', {propiedad, 'P788', {['formato'] = 'entidadID', ['valor_posicional'] = 2}}}
+	if Data['fungi']['ecología'][Ecologia1] then
+		table.insert(Ecologia, '[[File:' .. Data['fungi']['ecología'][Ecologia1][1] .. '|25px|link=]]')
+		if Data['fungi']['ecología'][Ecologia2] then table.insert(Ecologia, '[[File:' .. Data['fungi']['ecología'][Ecologia2][1] .. '|25px|link=]]') end
+		table.insert(Ecologia, '[[Ecología]]&nbsp;' .. Data['fungi']['ecología'][Ecologia1][2])
+		if Data['fungi']['ecología'][Ecologia2] then table.insert(Ecologia, 'o&nbsp;' .. Data['fungi']['ecología'][Ecologia2][2]) end
+	end
+	Ecologia = table.concat(Ecologia, '&nbsp;')
+
+	local Comestibilidad	= {}
+	local Comestibilidad1	= argumentos{'comestibilidad', 'howEdible', {propiedad, 'P789', {['formato'] = 'entidadID'}}} or 'default'
+	local Comestibilidad2	= argumentos{'comestibilidad2', 'howEdible2', {propiedad, 'P789', {['formato'] = 'entidadID', ['valor_posicional'] = 2}}}
+	if Data['fungi']['comestibilidad'][Comestibilidad1] then
+		table.insert(Comestibilidad, '[[File:' .. Data['fungi']['comestibilidad'][Comestibilidad1][1] .. '|25px|link=]]')
+		if Data['fungi']['comestibilidad'][Comestibilidad2] then table.insert(Comestibilidad, '[[File:' .. Data['fungi']['comestibilidad'][Comestibilidad2][1] .. '|25px|link=]]') end
+		table.insert(Comestibilidad, Data['fungi']['comestibilidad'][Comestibilidad1][2])
+		if Data['fungi']['comestibilidad'][Comestibilidad2] then table.insert(Comestibilidad, 'o&nbsp;' .. Data['fungi']['comestibilidad'][Comestibilidad2][2]) end
+	end
+	Comestibilidad = table.concat(Comestibilidad, '&nbsp;')
+
+	-- :: Datos de estilo
+	-- Formatos
+	ColorTituloFondo	= '#ADD8E6'
+	EstiloEtiqueta		= EstiloEtiqueta .. 'background-color:' .. ColorTituloFondo
+	
+	EstiloDatos			= 'text-align:left;vertical-align:center'
+	
+	-- :: La ficha
+	local TablaFicha = {
+		titulo  			= Titulo,
+		colorfondo			= ColorTituloFondo,
+		estilodatos			= EstiloDatos,
+		{tipo="sección",
+			{"", Himenio},
+			{"", Sombrero},
+			{"", Laminas},
+			{"", Velo},
+			{"", ColorEspora},
+			{"", Ecologia},
+			{"", Comestibilidad},
+		},
+		{tipo="sección",
+			titulo = "Debug",
+			{"", Debug},
+		},
+	}
+	return Ficha(TablaFicha)
+end
+
+function p.FichaIcnotaxon(frame)
+	-- :: Inicializardor
+	_init(frame)
+
+		-- Datos generales
+	local Taxonomia = obtenerTaxonomia() or {}
+	local RangoFosil= obtenerRangoFosil(frame)
+
+	local Icnofamilia			= argumentos{'icnofamilia'} or Taxonomia['familia']
+	local IcnofamiliaAuth		= argumentos{'autor icnofamilia'} or Taxonomia['familia_autoridad']
+	if IcnofamiliaAuth then Icnofamilia = Icnofamilia ..'<br><span class="etiqueta_autoridad">' .. IcnofamiliaAuth .. '<span>' end
+
+	local Icnosubfamilia			= argumentos{'icnosubfamilia'} or Taxonomia['subfamilia']
+	local IcnosubfamiliaAuth		= argumentos{'autor icnosubfamilia'} or Taxonomia['subfamilia_autoridad']
+	if IcnosubfamiliaAuth then Icnosubfamilia = Icnosubfamilia ..'<br><span class="etiqueta_autoridad">' .. IcnosubfamiliaAuth .. '<span>' end
+
+	local Icnogenero			= argumentos{'icnogenero'} or Taxonomia['género']
+	local IcnogeneroAuth		= argumentos{'autor icnogenero'} or Taxonomia['género_autoridad']
+	if IcnogeneroAuth then Icnogenero = Icnogenero ..'<br><span class="etiqueta_autoridad">' .. IcnogeneroAuth .. '<span>' end
+	
+	local Icnoespecie			= argumentos{'icnoespecie'} or Taxonomia['especie']
+	local IcnoespecieAuth		= argumentos{'autor icnoespecie'} or Taxonomia['especie_autoridad']
+	if IcnoespecieAuth then Icnoespecie = Icnoespecie ..'<br><span class="etiqueta_autoridad">' .. IcnoespecieAuth .. '<span>' end
+
+	--:: Estilos
+	EstiloSeccion	= 'background-color:' .. ColorTituloFondo
+	EstiloEtiqueta		= 'background-color:' .. ColorEtiqueta
+
+	-- :: La ficha
+	local TablaFicha = {
+		titulo  			= Titulo,
+		subtitulo			= RangoFosil,
+		colorfondo			= ColorTituloFondo,
+		estiloseccion		= EstiloSeccion,
+		estiloetiqueta		= EstiloEtiqueta,
+		imagen				= Imagen,
+		["tamañoimagen"]	= TamanoImagen,
+		imagen2				= Imagen2,
+		["tamañoimagen2"]	= TamanoImagen,
+		pie					= Pie,
+		pie2				= Pie2,
+		estilopie			= "font-size:88%",
+		estilopie2			= "font-size:88%",
+		{tipo="sección",
+			titulo = "Clasificación del [[icnofósil]]",
+			estilodatos = EstiloDatos .. 'font-style:italic',
+			{"Icnofamilia", Icnofamilia},
+			{"Icnosubfamilia", Icnosubfamilia},
+			{"Icnogénero", Icnogenero},
+			{"Icnosubgénero", Icnosubgenero},
+			{"Icnoespecie", Icnoespecie},
+			{"Icnosubespecie", Icnosubespecie},
+		},
+		{tipo="sección",
+			{"Clasificación etológica", Etologia},
+			{"Clasificación toponímica", Toponomia},
+			{"Organismos causantes", Causantes},
+			{"[[Especie tipo|Icnoespecie tipo]]", Tipo},
+			{SubdivisionesEtiqueta, Subdivisiones},
+			{"[[Sinonimia (biología)|Sinonimia]]", Sinonimomia},
+		},
+		{tipo="sección",
+			titulo = "Debug",
+			{"", Debug},
+		},
+	}
+	return Ficha(TablaFicha)
+end
+
+function obtenerEtiquetaWikidata(entidad)
+	if entidad then
+		entidad = mw.wikibase.getEntity(entidad)
+	else
+		entidad = Entidad
+	end
+
+	if entidad and entidad.labels and entidad.labels.es then
+		return entidad.labels.es.value
+	end
+end
+
+function seccionDesplegable(frame, titulo, lista)
+	if not lista then
+		return
+	end
+	return frame:preprocess('{{Sección desplegable|align=left|título=' .. titulo .. '|datos='.. lista .. '}}')
+end
+
+-- Función para obtener el estado de conservación y mostrar la gráfica IUCN (WIP)
+function obtenerEstadoConservacion(frame, TaxonCategoria, Distribucion)
+
+	-- Declaraciones
+	local NombreTaxon				= argumentos{'nombre', 'name', {propiedad, 'P225', {['enlace'] = 'no'}}}
+	local EstadoConservacionID		= argumentos{'estado', 'status'}
+	local EstadoConsSistema			= argumentos{'estado_sistema', 'status_system'}
+	local EstadoConsText			= argumentos{'estado_texto', 'status_text'} 
+	local EstadoConsRef				= argumentos{'estado_ref', 'status_ref'}
+	local EstadoConsRefURL
+	local EstadoConsRefFecha
+	local EstadoConsDesc
+	local EstadoConsCat
+
+	-- Identificadores de estado de conservación posibles
+	local EstadoConservacionCods = Data['estadoConservacionCods']
+
+	if not EstadoConservacionID then
+		-- Si es un fósil
+		if InstanciaDeID == 'Q23038290' then
+			EstadoConservacionID = 'fósil'
+
+		-- Si es un taxón actual
+		else
+			local EstadoConservacion	= elementoTabla(Entidad, 'claims', 'P141', 1)
+			if EstadoConservacion then
+				EstadoConservacionID	= elementoTabla(EstadoConservacion, 'mainsnak', 'datavalue', 'value', 'id')
+			else
+				return false
+			end
+
+			local EstadoConsRefFecha= elementoTabla(EstadoConservacion, 'references', 1, 'snaks', 'P813', 1, 'datavalue', 'value')
+			if EstadoConsRefFecha then
+				EstadoConsRefFecha = require('Módulo:Wikidata/Fecha').FormateaFechaHora(EstadoConsRefFecha, {['formatoFecha']='año', ['enlace']='no'})
+				EstadoConsRefFecha = tostring(EstadoConsRefFecha)
+			else
+				EstadoConsRefFecha = ''
+			end
+
+			local EstadoConsRefVerID	= elementoTabla(EstadoConservacion, 'references', 1, 'snaks', 'P248', 1, 'datavalue', 'value')
+			local EstadoConsRefVer		= ''
+			local EstadoConsRefAno		= ''
+			if EstadoConsRefVerID then
+				EstadoConsRefVerID		= obtenerEtiquetaWikidata(EstadoConsRefVerID.id)
+				EstadoConsRefVer		= EstadoConsRefVerID:sub(-6,-1)
+				EstadoConsRefAno		= EstadoConsRefVerID:sub(-6,-3)
+			end
+
+			if not Asesores then
+				Asesores = ''
+			end
+
+			EstadoConsRef		= frame:preprocess('<ref>{{IUCN|título= ' .. NombreTaxon .. '|asesores=' .. Asesores .. '|año=' .. EstadoConsRefAno .. '|edición=|' .. EstadoConsRefVer .. '|consultado=' .. EstadoConsRefFecha .. '}}</ref>')
+			if EstadoConsRefAno < '2001' and not EstadoConsRefAno == '' then
+				EstadoConsSistema	= 'uicn2.3'
+			else
+				EstadoConsSistema	= 'uicn3.1'
+			end
+		end
+	end
+
+	-- :: Consultas
+	if EstadoConservacionID then EstadoConservacionID = EstadoConservacionID:lower() end
+
+	-- No amenazado
+	if Data['estadoConservacionCods'][EstadoConservacionID] == 'SE' then
+		EstadoConsDesc	= 'No amenazado'
+	end
+
+	if Data['estadoConservacionCods'][EstadoConservacionID] == 'DOM' then
+		EstadoConsDesc	= '[[Domesticación|Domesticado]]'
+	end
+
+	-- Datos insufiecientes
+	if Data['estadoConservacionCods'][EstadoConservacionID] == 'DD' then
+
+		if EstadoConsText then
+			EstadoConsDesc = 'Datos insuficientes <span style="font-size:smaller">( ' .. EstadoConsText .. ')</span>'
+		elseif Data['estadoConservacionCods'][EstadoConservacionID] == 'UICN23' then
+			EstadoConsDesc = '[[Archivo:Status none DD.svg|200px|Datos insuficientes (DD)]]<br />[[Especie con datos insuficientes|Datos insuficientes]] <span style="font-size:smaller; font-weight:bold">([[Unión Internacional para la Conservación de la Naturaleza|UICN&nbsp;2.3]])</span>'
+		else--if Data['estadoConservacionCods'][EstadoConservacionID] == 'UICN31'], EstadoConsSistema) then
+			EstadoConsDesc = '[[Archivo:Status none DD.svg|200px|Datos insuficientes (DD)]]<br />[[Especie con datos insuficientes|Datos insuficientes]] <span style="font-size:smaller; font-weight:bold">([[Unión Internacional para la Conservación de la Naturaleza|UICN&nbsp;3.1]]))</span>'
+		end
+	end
+
+	-- Especie no evaluada
+	if Data['estadoConservacionCods'][EstadoConservacionID] == 'NE' then
+		EstadoConsDesc = 'No evaluado'
+		if EstadoConsText then
+			EstadoConsDesc = EstadoConsDesc .. '&nbsp;<span style="font-size:smaller">( ' .. EstadoConsText .. ')</span>'
+		end
+	end
+
+	-- No reconocido
+	if Data['estadoConservacionCods'][EstadoConservacionID] == 'NR' then
+		EstadoConsDesc = 'No reconocido'
+		if EstadoConsText then
+			EstadoConsDesc = EstadoConsDesc .. '&nbsp;<span style="font-size:smaller">( ' .. EstadoConsText .. ')</span>'
+		end
+	end
+
+	-- Riesgo bajo
+	if Data['estadoConservacionCods'][EstadoConservacionID] == 'LR' then
+		EstadoConsDesc = 'Riesgo bajo'
+		if EstadoConsText then
+			EstadoConsDesc = EstadoConsDesc .. '&nbsp;<span style="font-size:smaller">( ' .. EstadoConsText .. ')</span>'
+		end
+	end
+
+	-- Preocupación menor
+	if Data['estadoConservacionCods'][EstadoConservacionID] == 'LC' then
+
+		if EstadoConsText then
+			EstadoConsDesc = '[[Especie bajo preocupación menor|Preocupación menor]] <span style="font-size:smaller">( ' .. EstadoConsText .. ')</span>'
+		elseif Data['estadoConservacionCods'][EstadoConservacionID] == 'UICN23' then
+			EstadoConsDesc = '[[Archivo:Status iucn2.3 LC es.svg|200px|Preocupación menor (LC)]]<br />[[Especie bajo preocupación menor|Preocupación menor]] <span style="font-size:smaller; font-weight:bold">([[Unión Internacional para la Conservación de la Naturaleza|UICN&nbsp;2.3]])</span>'
+		else--if Data['estadoConservacionCods'][EstadoConservacionID] == 'UICN31'], EstadoConsSistema) then
+			EstadoConsDesc = '[[Archivo:Status iucn3.1 LC es.svg|200px|Preocupación menor (LC)]]<br />[[Especie bajo preocupación menor|Preocupación menor]] <span style="font-size:smaller; font-weight:bold">([[Unión Internacional para la Conservación de la Naturaleza|UICN&nbsp;3.1]])</span>'
+		end
+	end
+
+	-- Preocupación menor (LR/LC)
+	if Data['estadoConservacionCods'][EstadoConservacionID] == 'LRLC' then
+
+		if EstadoConsText then
+			EstadoConsDesc = '[[Especie bajo preocupación menor|Preocupación menor]] <span style="font-size:smaller">( ' .. EstadoConsText .. ')</span>'
+		elseif Data['estadoConservacionCods'][EstadoConservacionID] == 'UICN23' then
+			EstadoConsDesc = '[[Archivo:Status iucn2.3 LC es.svg|200px|Preocupación menor (LC)]]<br />[[Especie bajo preocupación menor|Preocupación menor]] <span style="font-size:smaller; font-weight:bold">([[Unión Internacional para la Conservación de la Naturaleza|UICN&nbsp;2.3]])</span>'
+		else--if Data['estadoConservacionCods'][EstadoConservacionID] == 'UICN31'], EstadoConsSistema) then
+			EstadoConsDesc = '[[Archivo:Status iucn3.1 LC es.svg|200px|Preocupación menor (LC)]]<br />[[Especie bajo preocupación menor|Preocupación menor]] <span style="font-size:smaller; font-weight:bold">([[Unión Internacional para la Conservación de la Naturaleza|UICN&nbsp;3.1]])</span>'
+		end
+	end
+
+	-- Casi amenazada
+	if Data['estadoConservacionCods'][EstadoConservacionID] == 'NT' then
+
+		if EstadoConsText then
+			EstadoConsDesc = '[[Especie casi amenazada|Casi amenazado]] <span style="font-size:smaller">( ' .. EstadoConsText .. ')</span>'
+		elseif Data['estadoConservacionCods'][EstadoConservacionID] == 'UICN23' then
+			EstadoConsDesc = '[[Archivo:Status iucn2.3 NT es.svg|200px|Casi amenazado (NT)]]<br />[[Especie casi amenazada|Casi amenazado]] <span style="font-size:smaller; font-weight:bold">([[Unión Internacional para la Conservación de la Naturaleza|UICN&nbsp;2.3]])</span>'
+		else--if Data['estadoConservacionCods'][EstadoConservacionID] == 'UICN31'], EstadoConsSistema) then
+			EstadoConsDesc = '[[Archivo:Status iucn3.1 NT es.svg|200px|Casi amenazado (NT)]]<br />[[Especie casi amenazada|Casi amenazado]] <span style="font-size:smaller; font-weight:bold">([[Unión Internacional para la Conservación de la Naturaleza|UICN&nbsp;3.1]])</span>'
+		end
+	end
+
+	-- Casi amenazada (LR/NT)
+	if Data['estadoConservacionCods'][EstadoConservacionID] == 'LRNT' then
+
+		if EstadoConsText then
+			EstadoConsDesc = '[[Especie casi amenazada|Casi amenazado]] <span style="font-size:smaller">( ' .. EstadoConsText .. ')</span>'
+		else
+			EstadoConsDesc = '[[Archivo:Status iucn2.3 NT es.svg|200px|Casi amenazado (LR/NT)]]<br />[[Especie casi amenazada|Casi amenazado]] <span style="font-size:smaller; font-weight:bold">([[Unión Internacional para la Conservación de la Naturaleza|UICN&nbsp;2.3]])</span>'
+		end
+	end
+
+	-- Dependiente de conservación
+	if Data['estadoConservacionCods'][EstadoConservacionID] == 'LRCD' then
+
+		if EstadoConsText then
+			EstadoConsDesc = 'Dependiente de conservación <span style="font-size:smaller">( ' .. EstadoConsText .. ')</span>'
+		else
+			EstadoConsDesc = '[[Archivo:Status iucn2.3 CD es.svg|200px|Dependiente de conservación (CD)]]<br />Dependiente de conservación <span style="font-size:smaller; font-weight:bold">([[Unión Internacional para la Conservación de la Naturaleza|UICN&nbsp;2.3]])</span>'
+		end
+	end
+
+	-- Vulnerable
+	if Data['estadoConservacionCods'][EstadoConservacionID] == 'VU' then
+
+		if EstadoConsText then
+			EstadoConsDesc = '[[Especie vulnerable|Vulnerable]] <span style="font-size:smaller">( ' .. EstadoConsText .. ')</span>'
+		elseif Data['estadoConservacionCods'][EstadoConservacionID] == 'UICN23' then
+			EstadoConsDesc = '[[Archivo:Status iucn2.3 VU es.svg|200px|Vulnerable (VU)]]<br />[[Especie vulnerable|Vulnerable]] <span style="font-size:smaller; font-weight:bold">([[Unión Internacional para la Conservación de la Naturaleza|UICN&nbsp;2.3]])</span>'
+		else--if Data['estadoConservacionCods'][EstadoConservacionID] == 'UICN31'], EstadoConsSistema) then
+			EstadoConsDesc = '[[Archivo:Status iucn3.1 VU es.svg|200px|Vulnerable (VU)]]<br />[[Especie vulnerable|Vulnerable]] <span style="font-size:smaller; font-weight:bold">([[Unión Internacional para la Conservación de la Naturaleza|UICN&nbsp;3.1]])</span>'
+		end
+	end
+
+	-- En peligro de extinción
+	if Data['estadoConservacionCods'][EstadoConservacionID] == 'EN' then
+
+		if EstadoConsText then
+			EstadoConsDesc = '[[Especie en peligro de extinción|En peligro]] <span style="font-size:smaller">( ' .. EstadoConsText .. ')</span>'
+		elseif Data['estadoConservacionCods'][EstadoConservacionID] == 'UICN23' then
+			EstadoConsDesc = '[[Archivo:Status iucn2.3 EN es.svg|200px|En peligro (EN)]]<br />[[Especie en peligro de extinción|En peligro]] <span style="font-size:smaller; font-weight:bold">([[Unión Internacional para la Conservación de la Naturaleza|UICN&nbsp;2.3]])</span>'
+		else--if Data['estadoConservacionCods'][EstadoConservacionID] == 'UICN31'], EstadoConsSistema) then
+			EstadoConsDesc = '[[Archivo:Status iucn3.1 EN es.svg|200px|En peligro (EN)]]<br />[[Especie en peligro de extinción|En peligro]] <span style="font-size:smaller; font-weight:bold">([[Unión Internacional para la Conservación de la Naturaleza|UICN&nbsp;3.1]])</span>'
+		end
+	end
+
+	-- En peligro crítico
+	if Data['estadoConservacionCods'][EstadoConservacionID] == 'CR' then
+
+		if EstadoConsText then
+			EstadoConsDesc = '[[Especie en peligro crítico de extinción|En peligro crítico]] <span style="font-size:smaller">( ' .. EstadoConsText .. ')</span>'
+		elseif Data['estadoConservacionCods'][EstadoConservacionID] == 'UICN23' then
+			EstadoConsDesc = '[[Archivo:Status iucn2.3 CR es.svg|200px|En peligro crítico (CR)]]<br />[[Especie en peligro crítico de extinción|En peligro crítico]] <span style="font-size:smaller; font-weight:bold">([[Unión Internacional para la Conservación de la Naturaleza|UICN&nbsp;2.3]])</span>'
+		else--if Data['estadoConservacionCods'][EstadoConservacionID] == 'UICN31'], EstadoConsSistema) then
+			EstadoConsDesc = '[[Archivo:Status iucn3.1 CR es.svg|200px|En peligro crítico (CR)]]<br />[[Especie en peligro crítico de extinción|En peligro crítico]] <span style="font-size:smaller; font-weight:bold">([[Unión Internacional para la Conservación de la Naturaleza|UICN&nbsp;3.1]])</span>'
+		end
+	end
+
+	-- Posiblemente extinto en libertad
+	if Data['estadoConservacionCods'][EstadoConservacionID] == 'PEW' then
+
+		if EstadoConsText then
+			EstadoConsDesc = 'Posiblemente [[extinción|extinto]] en libertad <span style="font-size:smaller">( ' .. EstadoConsText .. ')</span>'
+		else
+			EstadoConsDesc = '[[Archivo:Status none PEW.svg|200px|En peligro crítico, posiblemente extinto en estado salvaje (PEW)]]<br />Posiblemente [[extinción|extinto]] en libertad <span style="font-size:smaller; font-weight:bold">([[Unión Internacional para la Conservación de la Naturaleza|UICN]])</span>'
+		end
+	end
+
+	-- Extinto en libertad
+	if Data['estadoConservacionCods'][EstadoConservacionID] == 'EW' then
+
+		if EstadoConsText then
+			EstadoConsDesc = '[[Especie extinta en estado silvestre|Extinto en libertad]] <span style="font-size:smaller">( ' .. EstadoConsText .. ')</span>'
+		elseif Data['estadoConservacionCods'][EstadoConservacionID] == 'UICN23' then
+			EstadoConsDesc = '[[Archivo:Status iucn2.3 EW es.svg|200px|Extinto en estado silvestre (EW)]]<br />[[Especie extinta en estado silvestre|Extinto en libertad]] <span style="font-size:smaller; font-weight:bold">([[Unión Internacional para la Conservación de la Naturaleza|UICN&nbsp;2.3]])</span>'
+		else--if Data['estadoConservacionCods'][EstadoConservacionID] == 'UICN31'], EstadoConsSistema) then
+			EstadoConsDesc = '[[Archivo:Status iucn3.1 EW es.svg|200px|Extinto en estado silvestre (EW)]]<br />[[Especie extinta en estado silvestre|Extinto en libertad]] <span style="font-size:smaller; font-weight:bold">([[Unión Internacional para la Conservación de la Naturaleza|UICN&nbsp;3.1]])</span>'
+		end
+	end
+
+	-- Posiblemente extinto
+	if Data['estadoConservacionCods'][EstadoConservacionID] == 'PE' then
+		if EstadoConsText then
+			EstadoConsDesc = 'Posiblemente [[extinción|extinto]] <span style="font-size:smaller">( ' .. EstadoConsText .. ')</span>'
+		else
+			EstadoConsDesc = '[[Archivo:Status none PE.svg|200px|En peligro crítico, posiblemente extinto (PE)]]<br />Posiblemente [[extinción|extinto]] <span style="font-size:smaller; font-weight:bold">([[Unión Internacional para la Conservación de la Naturaleza|UICN]])</span>'
+		end
+	end
+
+	-- Extinto
+	if Data['estadoConservacionCods'][EstadoConservacionID] == 'EX' then
+
+		if EstadoConsText then
+			EstadoConsDesc = '[[Extinción|Extinto]] <span style="font-size:smaller">( ' .. EstadoConsText .. ')</span>'
+		elseif Data['estadoConservacionCods'][EstadoConservacionID] == 'UICN23' then
+			EstadoConsDesc = '[[Archivo:Status iucn2.3 EX es.svg|200px|Extinto (EX)]]<br />[[Extinción|Extinto]] {{#if:{{{extinct|}}}|desde {{{extinct}}}}} <span style="font-size:smaller; font-weight:bold">([[Unión Internacional para la Conservación de la Naturaleza|UICN&nbsp;2.3]])</span>'
+		else--if Data['estadoConservacionCods'][EstadoConservacionID] == 'UICN31'], EstadoConsSistema) then
+			EstadoConsDesc = '[[Archivo:Status iucn3.1 EX es.svg|200px|Extinto (EX)]]<br />[[Extinción|Extinto]] {{#if:{{{extinct|}}}|desde {{{extinct}}}}} <span style="font-size:smaller; font-weight:bold">([[Unión Internacional para la Conservación de la Naturaleza|UICN&nbsp;3.1]])</span>'
+		end
+	end
+
+	-- Extinto en época prehistórica
+	if Data['estadoConservacionCods'][EstadoConservacionID] == 'PRE' then
+		EstadoConsDesc = '[[Extinción|Extinto]] en época prehistórica'
+	end
+
+	-- taxón paleontológico (fósil)
+	if Data['estadoConservacionCods'][EstadoConservacionID] == 'FOSIL' then
+		EstadoConsDesc = '[[Extinción|Extinto]] ([[fósil]])'
+	end
+
+	EstadoConsCat = obtenerEstadoConservacionCategoria(frame, Data['estadoConservacionCods'][EstadoConservacionID], TaxonCategoria, Distribucion)
+
+	if EstadoConsDesc then
+		EstadoConservacion = EstadoConsDesc
+		if EstadoConsRef then EstadoConservacion = EstadoConservacion .. EstadoConsRef end
+		if EstadoConsCat then EstadoConservacion = EstadoConservacion .. EstadoConsCat end
+	end
+
+	return EstadoConservacion
+end
+
+function obtenerEstadoConservacionCategoria(frame, EstadoConservacionID, TaxonCategoria, Distribucion)
+	local Categoria
+	local TaxonTexto
+	local CategoriaTaxonomicaTexto
+	local AmenazadoTexto
+
+	if not EstadoConservacionID then EstadoConservacionID = '' end
+
+	if TaxonCategoria then
+		TaxonCategoria = TaxonCategoria:gsub("[%'%[%[%]]+",''):lower()
+	else
+		return false
+	end
+
+	if EstadoConservacionID == 'FOSIL' then
+		Categoria = 'Fósiles'
+	elseif EstadoConservacionID == 'PRE' then
+		Categoria = 'Especies extintas en la prehistoria'
+	elseif EstadoConservacionID == 'DOM' then
+		Categoria = 'Animales domesticados'
+	else
+		TaxonTexto					= Data['estadoConservacionCategorias']['Taxones'][TaxonCategoria]
+		CategoriaTaxonomicaTexto	= Data['estadoConservacionCategorias']['EstadosConservacion'][EstadoConservacionID]
+		if EstadoConservacionID == 'NT' or EstadoConservacionID == 'LC' then
+			AmenazadoTexto			= Data['estadoConservacionCategorias']['Amenazados'][TaxonCategoria]
+		end
+
+		if TaxonTexto then TaxonTexto = TaxonTexto .. ' ' end
+		if CategoriaTaxonomicaTexto and AmenazadoTexto then CategoriaTaxonomicaTexto = CategoriaTaxonomicaTexto .. ' ' end 
+		if not AmenazadoTexto then AmenazadoTexto = '' end
+
+		if TaxonTexto and CategoriaTaxonomicaTexto then Categoria = TaxonTexto .. CategoriaTaxonomicaTexto .. AmenazadoTexto end
+	end
+
+	if Categoria then 
+		if EstadoConservacionCategoria then Categoria = Categoria .. ' de ' .. EstadoConservacionCategoria end
+		return '[[Categoría:' .. Categoria .. ']]'
+	end
+end
+
+-- Función para obtener el grupo virus
+function obtenerGrupoVirus()
+	local GrupoVirus = argumentos{'virus_group', 'grupo_virus', {propiedad, 'P4628', {['formato'] = 'entidadID'}}}
+
+	if GrupoVirus then
+		GrupoVirus = GrupoVirus:lower()
+	else
+		return false
+	end
+
+	if Data['gruposVirus'][GrupoVirus] then return Data['gruposVirus'][GrupoVirus] end
+
+end
+
+-- Función para detectar si es virus
+function esVirus(Taxon)
+	local Taxon = Taxon or ''
+	if mw.ustring.match(Taxon:lower(), 'riboviria') or mw.ustring.match(Taxon:lower(), 'riboviria') then return true end
+end
+
+-- Función para obtener la raza
+function obtenerRaza(Raza)
+	if not Raza then return {} end
+	local Sexo		= propiedad('P21', {['enlace'] = 'no'})
+
+	if Data['razas'][Raza] == 'gato' then return {'Felis silvestris catus', 'raza de [[gato]]'} end
+	if Data['razas'][Raza] == 'perro' then return {'Canis lupus familiaris', '[[raza de perro]]'} end
+	if Data['razas'][Raza] == 'caballo' then return {'Equus ferus caballus', 'raza de [[Equus ferus caballus|caballo]]'} end
+	if Data['razas'][Raza] == 'caprina' then return {'Capra aegagrus hircus', 'raza [[Capra aegagrus hircus|caprina]]'} end
+	if Data['razas'][Raza] == 'bovina' then return {'Bos primigenius taurus', 'raza [[Bos primigenius taurus|ovina]]'} end
+	if Data['razas'][Raza] == 'ovina' then return {'', 'raza [[Ovis orientalis aries|ovina]]'} end
+	if Data['razas'][Raza] == 'ave' then return {'Ovis orientalis aries', 'raza de ave'} end
+	if Data['razas'][Raza] == 'gallina' then
+		if Sexo == 'macho' then
+			return {'Gallus gallus domesticus', 'raza de [[Gallus gallus domesticus|gallo]]'}
+		else
+			return {'Gallus gallus domesticus', 'raza de [[Gallus gallus domesticus|gallina]]'}
+		end
+	end
+	if Data['razas'][Raza] == 'conejo' then return {'Oryctolagus cuniculus', 'raza de [[Oryctolagus cuniculus|conejo]]'} end
+	if Data['razas'][Raza] == 'pato' then return {'Pato', 'raza de [[pato]]'} end
+	if Data['razas'][Raza] == 'burro' then return {'Equus africanus asinus', 'raza de [[Equus africanus asinus|asno]]'} end
+end
+
+-- Función para obtener el árbol taxonómico completo (WIP).
+-- Esta función es extremadamente costosa, por lo que se debe optimizar lo más posible.
+function obtenerTaxonomia()
+	if argumentos{'wikidata'} == 'no' then return false end
+
+	local Taxonomia		= {}
+	local Taxon
+	local TaxonNombre
+	local TaxonNombreValor
+	local TaxonNombreAutor
+	local TaxonNombreFecha
+	local TaxonSuperior
+	local TaxonCategoria
+	local TaxonCategoriaID
+	
+	-- :: "grupo de organismos conocidos por un nombre común particular"
+	if InstanciaDeID == 'Q55983715' then
+		Taxon					= mw.wikibase.getEntity(propiedad('P31', {['calificador'] = 'P642', ['formato'] = 'entidadID'}))
+		if Taxon then
+			TaxonCategoriaID	= elementoTabla(Taxon, 'claims', 'P105', 1, 'mainsnak', 'datavalue', 'value', 'id')
+		if TaxonCategoriaID then TaxonCategoria	= obtenerEtiquetaWikidata(TaxonCategoriaID) end
+
+		TaxonNombre			= elementoTabla(Taxon, 'claims', 'P225', 1)
+		TaxonNombreValor	= elementoTabla(TaxonNombre, 'mainsnak', 'datavalue', 'value')
+		TaxonNombreAutor	= obtenerEtiquetaWikidata(elementoTabla(TaxonNombre, 'qualifiers', 'P405', 1, 'datavalue', 'value', 'id'))
+		TaxonNombreFecha	= elementoTabla(TaxonNombre, 'qualifiers', 'P574', 1, 'datavalue', 'value', 'time')
+		if TaxonNombreAutor then
+			TaxonNombreAutor = '[[' .. TaxonNombreAutor .. '|' .. TaxonNombreAutor:match("%s*(%S+)$")  .. ']]'
+			if TaxonNombreFecha then
+				TaxonNombreAutor = TaxonNombreAutor .. ', ' .. TaxonNombreFecha:sub(2,5)
+			end
+		end
+
+		if TaxonCategoria and TaxonNombreValor then
+			Taxonomia[TaxonCategoria] = "" .. abreviar(TaxonNombreValor) .. ""
+			Taxonomia[TaxonCategoria .. '_autoridad'] =  TaxonNombreAutor end
+
+		TaxonSuperior = mw.wikibase.getEntity(elementoTabla(Taxon, 'claims', 'P171', 1, 'mainsnak', 'datavalue', 'value', 'id'))
+		end
+
+	-- :: Híbrido
+	elseif InstanciaDeID == 'Q42621' or InstanciaDeID == 'Q759721' or InstanciaDeID == 'Q2293576' or InstanciaDeID == 'Q49421248' or InstanciaDeID == 'Q56242815' then
+		local Progenitor1 		= mw.wikibase.getEntity(elementoTabla(Entidad, 'claims', 'P1531', 1, 'mainsnak', 'datavalue', 'value', 'id'))
+		local Progenitor2 		= mw.wikibase.getEntity(elementoTabla(Entidad, 'claims', 'P1531', 2, 'mainsnak', 'datavalue', 'value', 'id'))
+
+		if not Progenitor1 or not Progenitor2 then return false end
+
+		local Progenitor1Nombre		= propiedad('P225', {['enlace'] = 'no'}, Progenitor1)
+		local Progenitor2Nombre		= propiedad('P225', {['enlace'] = 'no'}, Progenitor2)
+
+		if not Progenitor1Nombre or not Progenitor2Nombre then return false end
+
+		local Progenitor1Enlace		= elementoTabla(Progenitor1, 'sitelinks', 'eswiki', 'title')
+		local Progenitor2Enlace		= elementoTabla(Progenitor2, 'sitelinks', 'eswiki', 'title')
+
+		if Progenitor1Enlace then
+			Progenitor1Nombre	= "[[" .. Progenitor1Enlace .. "|" .. abreviar(Progenitor1Nombre) .. "]]"
+		else
+			Progenitor1Nombre	 = "''" .. abreviar(Progenitor1Nombre) .. "''" 
+		end
+
+		if Progenitor2Enlace then
+			Progenitor2Nombre	= "[[" .. Progenitor2Enlace .. "|" .. abreviar(Progenitor2Nombre) .. "]]"
+		else
+			Progenitor2Nombre	= abreviar(Progenitor2Nombre)
+		end
+
+		local Progenitor1Sexo	= elementoTabla(Entidad, 'claims', 'P1531', 1)
+		local Progenitor2Sexo	= elementoTabla(Entidad, 'claims', 'P1531', 2)
+
+		if Progenitor1Sexo and Progenitor2Sexo then
+			Progenitor1Sexo		= elementoTabla(Progenitor1Sexo, 'qualifiers', 'P21', 1, 'datavalue', 'value', 'id')
+			if Progenitor1Sexo == 'Q44148' then
+				Progenitor1Sexo	= ' ♂'
+			elseif Progenitor1Sexo == 'Q43445' then
+				Progenitor1Sexo	= ' ♀'
+			else
+				Progenitor1Sexo	= ''
+			end
+
+			Progenitor2Sexo		= elementoTabla(Progenitor2Sexo, 'qualifiers', 'P21', 1, 'datavalue', 'value', 'id')
+			if Progenitor2Sexo == 'Q44148' then
+				Progenitor2Sexo	= ' ♂'
+			elseif Progenitor2Sexo == 'Q43445' then
+				Progenitor2Sexo	= ' ♀'
+			else
+				Progenitor2Sexo	= ''
+			end
+		else
+			Progenitor1Sexo = ''
+			Progenitor2Sexo = ''
+		end
+
+		local Progenitor1Categoria	= propiedad('P105', {['enlace'] = 'no'}, Progenitor1)
+		local Progenitor2Categoria	= propiedad('P105', {['enlace'] = 'no'}, Progenitor2)
+
+		if not Progenitor1Categoria or not Progenitor2Categoria then return false end
+
+		-- Ambos son subespecies
+		if (Progenitor1Categoria == 'subespecie' or Progenitor1Categoria == 'subspecies') and (Progenitor2Categoria == 'subespecie' or Progenitor2Categoria == 'subspecies') then
+
+			Taxonomia['subespecie'] = Progenitor1Nombre .. Progenitor1Sexo .. " × " .. Progenitor2Nombre .. Progenitor2Sexo
+
+			-- Especie
+			local Progenitor1Especie		= mw.wikibase.getEntity(elementoTabla(Progenitor1, 'claims', 'P171', 1, 'mainsnak', 'datavalue', 'value', 'id'))
+			local Progenitor2Especie		= mw.wikibase.getEntity(elementoTabla(Progenitor2, 'claims', 'P171', 1, 'mainsnak', 'datavalue', 'value', 'id'))
+
+			if not Progenitor1Especie or not Progenitor2Especie then return false end
+
+			local Progenitor1EspecieNombre	= propiedad('P225', {['enlace'] = 'no'}, Progenitor1Especie)
+			local Progenitor2EspecieNombre	= propiedad('P225', {['enlace'] = 'no'}, Progenitor2Especie)
+
+			if not Progenitor1EspecieNombre or not Progenitor2EspecieNombre then return false end
+
+			local Progenitor1EspecieEnlace	= elementoTabla(Progenitor1Especie, 'sitelinks', 'eswiki', 'title')
+			local Progenitor2EspecieEnlace	= elementoTabla(Progenitor2Especie, 'sitelinks', 'eswiki', 'title')
+
+			if Progenitor1EspecieEnlace then
+				Progenitor1EspecieNombre = "[[" .. Progenitor1EspecieEnlace .. "|" .. abreviar(Progenitor1EspecieNombre) .. "]]"
+			else
+				Progenitor1EspecieNombre = abreviar(Progenitor1EspecieEnlace)
+			end
+			if Progenitor2EspecieEnlace then
+				Progenitor2EspecieNombre = "[[" .. Progenitor2EspecieNombre .. "|" .. abreviar(Progenitor2EspecieNombre) .. "]]"
+			else
+				Progenitor2EspecieNombre = abreviar(Progenitor2EspecieNombre)
+			end
+
+			-- Ambos son de la misma especie
+			if Progenitor1EspecieNombre == Progenitor2EspecieNombre then
+				Taxonomia['especie']	= Progenitor1EspecieNombre
+				TaxonSuperior			= mw.wikibase.getEntity(elementoTabla(Progenitor1Especie, 'claims', 'P171', 1, 'mainsnak', 'datavalue', 'value', 'id'))
+
+			-- Ambos son de diferentes especies
+			else
+				Taxonomia['especie']	= Progenitor1EspecieNombre .. " × " .. Progenitor2EspecieNombre
+
+				-- Género
+				local Progenitor1Genero		= mw.wikibase.getEntity(elementoTabla(Progenitor1Especie, 'claims', 'P171', 1, 'mainsnak', 'datavalue', 'value', 'id'))
+				local Progenitor2Genero		= mw.wikibase.getEntity(elementoTabla(Progenitor2Especie, 'claims', 'P171', 1, 'mainsnak', 'datavalue', 'value', 'id'))
+
+				if not Progenitor1Genero or not Progenitor2Genero then return false end
+
+				local Progenitor1GeneroNombre	= propiedad('P225', {['enlace'] = 'no'}, Progenitor1Genero)
+				local Progenitor2GeneroNombre	= propiedad('P225', {['enlace'] = 'no'}, Progenitor2Genero)
+
+				if not Progenitor1GeneroNombre or not Progenitor2GeneroNombre then return false end
+
+				local Progenitor1GeneroEnlace	= elementoTabla(Progenitor1Genero, 'sitelinks', 'eswiki', 'title')
+				local Progenitor2GeneroEnlace	= elementoTabla(Progenitor2Genero, 'sitelinks', 'eswiki', 'title')
+
+				if Progenitor1GeneroEnlace then
+					Progenitor1GeneroNombre = "[[" .. Progenitor1GeneroEnlace .. "|" .. Progenitor1GeneroNombre .. "]]"
+				else
+					Progenitor1GeneroNombre = "" .. Progenitor1GeneroNombre .. ""
+				end
+
+				if Progenitor2GeneroEnlace then
+					Progenitor2GeneroNombre = "[[" .. Progenitor2GeneroEnlace .. "|" .. Progenitor2GeneroNombre .. "]]"
+				else
+					Progenitor2GeneroNombre = Progenitor2GeneroNombre
+				end
+
+				-- Ambos son del mismo género
+				if Progenitor1GeneroNombre == Progenitor2GeneroNombre then
+					Taxonomia['género']	= Progenitor1GeneroNombre
+					TaxonSuperior		= mw.wikibase.getEntity(elementoTabla(Progenitor1Genero, 'claims', 'P171', 1, 'mainsnak', 'datavalue', 'value', 'id'))
+
+				-- Ambos son de diferentes géneros
+				else
+					Taxonomia['género']	= Progenitor1GeneroNombre .. " × " .. Progenitor2GeneroNombre
+					TaxonSuperior		= mw.wikibase.getEntity(elementoTabla(Progenitor1Genero, 'claims', 'P171', 1, 'mainsnak', 'datavalue', 'value', 'id'))
+				end
+			end
+
+		-- El primero es subespecie y el segundo es especie
+		elseif Progenitor1Categoria == 'subespecie' and Progenitor2Categoria == 'especie' then
+			Taxonomia['subespecie'] = Progenitor1Nombre .. Progenitor1Sexo .. " × " .. Progenitor2Nombre ..  Progenitor2Sexo
+
+		-- El primero es especie y el segundo es subespecie
+		elseif Progenitor1Categoria == 'especie' and Progenitor2Categoria == 'subespecie' then
+			Taxonomia['subespecie'] = Progenitor1Nombre .. Progenitor1Sexo .. " × " .. Progenitor2Nombre .. Progenitor2Sexo
+
+		-- Ambos son especies
+		elseif Progenitor1Categoria == 'especie' and Progenitor2Categoria == 'especie' then
+			Taxonomia['especie']	= Progenitor1Nombre.. Progenitor1Sexo .. " × " .. Progenitor2Nombre.. Progenitor2Sexo
+
+			local Progenitor1Genero = mw.wikibase.getEntity(elementoTabla(Progenitor1, 'claims', 'P171', 1, 'mainsnak', 'datavalue', 'value', 'id'))
+			local Progenitor2Genero = mw.wikibase.getEntity(elementoTabla(Progenitor2, 'claims', 'P171', 1, 'mainsnak', 'datavalue', 'value', 'id'))
+
+			if not Progenitor1Genero or not Progenitor2Genero then return false end
+
+			local Progenitor1GeneroNombre	= propiedad('P225', {['enlace'] = no}, Progenitor1Genero)
+			local Progenitor2GeneroNombre	= propiedad('P225', {['enlace'] = no}, Progenitor2Genero)
+
+			if not Progenitor1GeneroNombre or not Progenitor2GeneroNombre then return false end
+
+			local Progenitor1GeneroEnlace	= elementoTabla(Progenitor1Genero, 'sitelinks', 'eswiki', 'title')
+			local Progenitor2GeneroEnlace	= elementoTabla(Progenitor2Genero, 'sitelinks', 'eswiki', 'title')
+
+			if Progenitor1GeneroEnlace then
+				Progenitor1GeneroNombre = "[[" .. Progenitor1GeneroEnlace .. "|" .. Progenitor1GeneroNombre .. "]]"
+			else
+				Progenitor1GeneroNombre = Progenitor1GeneroNombre
+			end
+
+			if Progenitor2GeneroEnlace then
+				Progenitor2GeneroNombre = "[[" .. Progenitor2GeneroEnlace .. "|" .. Progenitor2GeneroNombre .. "]]"
+			else
+				Progenitor2GeneroNombre = Progenitor2GeneroNombre
+			end
+
+			-- Ambos son del mismo género
+			if Progenitor1GeneroNombre == Progenitor2GeneroNombre then
+				Taxonomia['género']	= Progenitor1GeneroNombre
+				TaxonSuperior		= mw.wikibase.getEntity(elementoTabla(Progenitor1Genero, 'claims', 'P171', 1, 'mainsnak', 'datavalue', 'value', 'id'))
+
+			-- Ambos son de diferentes géneros
+			else
+				Taxonomia['género']	= Progenitor1GeneroNombre ..  " × " .. Progenitor2GeneroNombre
+				TaxonSuperior		= mw.wikibase.getEntity(elementoTabla(Progenitor1Genero, 'claims', 'P171', 1, 'mainsnak', 'datavalue', 'value', 'id'))
+			end
+		end
+
+	-- :: Otros taxones
+	else
+		TaxonCategoriaID		= elementoTabla(Entidad, 'claims', 'P105', 1, 'mainsnak', 'datavalue', 'value', 'id')
+		if TaxonCategoriaID then
+			TaxonCategoria	= obtenerEtiquetaWikidata(TaxonCategoriaID)
+		elseif InstanciaDeID == 'Q855769' and not TaxonCategoria then
+			TaxonCategoria		= obtenerEtiquetaWikidata(InstanciaDeID)
+		end
+
+		TaxonNombre			= elementoTabla(Entidad, 'claims', 'P225', 1)
+		TaxonNombreValor	= elementoTabla(TaxonNombre, 'mainsnak', 'datavalue', 'value')
+		TaxonNombreAutor	= obtenerEtiquetaWikidata(elementoTabla(TaxonNombre, 'qualifiers', 'P405', 1, 'datavalue', 'value', 'id'))
+		TaxonNombreFecha	= elementoTabla(TaxonNombre, 'qualifiers', 'P574', 1, 'datavalue', 'value', 'time')
+
+		if TaxonCategoria and TaxonNombreValor then
+			Taxonomia[TaxonCategoria] = abreviar(TaxonNombreValor)
+		end
+
+		if TaxonAutorValor then
+			TaxonAutorValor		= '[[' .. TaxonAutorValor .. '|' .. TaxonAutorValor:match("%s*(%S+)$")  .. ']]'
+			if TaxonNombreFecha then
+				TaxonAutorValor	= TaxonAutorValor .. ', ' .. TaxonFecha:sub(2,5)
+			end
+			Taxonomia[TaxonCategoria .. '_autoridad'] =  TaxonAutorValor
+		end
+
+		local ArbolCompletoWikidata = argumentos{'arbol'}
+		ArbolCompletoWikidata = 'sí' -- Solo durante la etapa de creación o depuración
+		if ArbolCompletoWikidata then TaxonSuperior = mw.wikibase.getEntity(elementoTabla(Entidad, 'claims', 'P171', 1, 'mainsnak', 'datavalue', 'value', 'id')) end
+	end
+	
+	Taxonomia['último_taxón'] = TaxonNombre
+
+	if TaxonSuperior then
+		local CTLl
+		local CTKl
+		while(true) do
+			CTLl			= elementoTabla(TaxonSuperior, 'sitelinks', 'eswiki', 'title') or propiedad('P225', {['enlace'] = 'no'}, TaxonSuperior) or obtenerEtiquetaWikidata(elementoTabla(TaxonSuperior))
+			if not CTL1 then
+				CTKl		= obtenerEtiquetaWikidata(elementoTabla(TaxonSuperior, 'claims', 'P105', 1, 'mainsnak', 'datavalue', 'value', 'id'))
+			else
+				CTKl		= propiedad('P105', {['enlace'] = 'no'}, TaxonSuperior)
+			end
+
+			if CTKl and CTLl then Taxonomia[CTKl] = ModuloFormatos.enlazar(CTLl, CTLl, TaxonSuperior, {['debeExistir'] = 'sí'}) end
+
+			if CTKl == 'dominio' or CTKl == 'Q146481' then break end
+
+			TaxonSuperior	= mw.wikibase.getEntity(elementoTabla(TaxonSuperior, 'claims', 'P171', 1, 'mainsnak', 'datavalue', 'value', 'id'))
+			if not TaxonSuperior then break end
+			if os.clock() > 6 then break end
+		end
+	end
+
+	local Sinonimos			= elementoTabla(Entidad, 'claims', 'P1420')
+	if Sinonimos then
+		local SinonimosValor = {}
+		for k, v in pairs(Sinonimos) do
+			SinonimoNombre	= "''" .. obtenerEtiquetaWikidata(elementoTabla(v, 'mainsnak', 'datavalue', 'value', 'id')) .. "''"
+			SinonimoAutor	= obtenerEtiquetaWikidata(elementoTabla(v, 'qualifiers', 'P405', 1, 'datavalue', 'value', 'id'))
+			SinonimoFecha	= elementoTabla(v, 'qualifiers', 'P574', 1, 'datavalue', 'value')
+			
+			if SinonimoAutor and SinonimoFecha then
+				SinonimoFecha = require('Módulo:Wikidata/Fecha').FormateaFechaHora(SinonimoFecha, {['formatoFecha']='año', ['enlace']='no'})
+				SinonimoNombre = SinonimoNombre .. '<br><span class="etiqueta_autoridad">[[' .. SinonimoAutor .. '|' .. SinonimoAutor:match("%s*(%S+)$") .. ']], ' .. SinonimoFecha .. '</span>'
+			end
+
+			table.insert(SinonimosValor, SinonimoNombre)
+		end
+		
+		Taxonomia['sinónimos'] = table.concat(SinonimosValor, '<br>')
+	end
+
+	Taxonomia['último_categoría'] = TaxonCategoriaID
+
+	return Taxonomia
+end
+
+function obtenerTaxonomiaInferior(Taxonomia)
+	local Titulo			= argumentos{'subdivisiones_titulo', 'subdivision_ranks'} or 'Subdivisiones'
+	local TaxonomiaInferior = argumentos{'subdivisiones', 'subdivision'}
+	local Genero	= 'a'
+
+	if Taxonomia['último_categoría'] then
+		local Categoria		= Taxonomia['último_categoría']
+		if Categoria then
+			if Data['taxonomiaInferior'][Categoria] then
+				Titulo		= Data['taxonomiaInferior'][Categoria][1]
+				if Categoria == 'Q7432' and esVirus(Taxonomia['dominio']) or esVirus(Taxonomia['oden']) then Titulo = '[[Cepa]]s' end
+				Genero		= Data['taxonomiaInferior'][Categoria][2]
+			end
+		end
+	end
+
+	-- Retornando solo el título de la sección de taxones inferiores. He de buscar alguna forma de obtener los taxones inferiores
+	return {Titulo, TaxonomiaInferior, Genero}
+end
+
+function obtenerRangoFosil(frame)
+	local RangoFosil			= argumentos{'rango_fósil', 'rango fósil', 'fossil_range', 'fossil range'}
+	if RangoFosil then
+		return '[[Escala temporal geológica|Rango temporal]]: ' .. RangoFosil
+	end
+
+	local RangoFosilPrimero		= argumentos{'rango_fosil_primero', 'fossil_range_first', {propiedad, 'P2348', {['enlace'] = 'no'}}, {propiedad, 'P580', {['formatoFecha'] = 'año'}}, {propiedad, 'P7584', {['formato'] = 'número', ['valor_posicional'] = 1}}}
+	local RangoFosilUltimo		= argumentos{'rango_fosil_ultimo', 'fossil_range_last', {propiedad, 'P2348', {['enlace'] = 'no'}}, {propiedad, 'P582', {['formatoFecha'] = 'año'}}, {propiedad, 'P7584', {['formato'] = 'número', ['valor_posicional'] = 2}}}
+	local RangoFosilRef			= argumentos{'rango_fósil_ref', 'fossil_range_ref'}
+	local RangoFosilPrefijo		= argumentos{'rango_fósil_prefijo', 'fossil_range_prefix'}
+	local RangoFosilSufijo		= argumentos{'rango_fósil_sufijo', 'fossil_range_suffix', 'fossil_range_ps'}
+
+	if not RangoFosilPrimero then
+		local RFP   = elementoTabla(Entidad, 'claims', 'P580', 1)
+		local RPR	= elementoTabla(Entidad, 'claims', 'P2348') or elementoTabla(Entidad, 'claims', 'P7584')
+		local FPRe1 = elementoTabla(RPR, 1)
+		local FPRe2 = elementoTabla(RPR, 2)
+
+		if RFP then
+			local RFPf = elementoTabla(RFP, 'mainsnak', 'datavalue', 'value')
+			if RFPf then
+				RFPf['precision'] = 9
+				RangoFosilPrimero = require('Módulo:Wikidata/Fecha').FormateaFechaHora(RFPf, {['formatoFecha']='año', ['enlace']='no'})
+				if RangoFosilPrimero then RangoFosilPrimero = aPotencia(RangoFosilPrimero) end
+			else
+				RFPf = ''
+			end
+
+			local RFPr   = elementoTabla(RFP, 'qualifiers', 'P2860', 1, 'datavalue', 'value')
+			local RFPa   = elementoTabla(RFP, 'qualifiers', 'P50',   1, 'datavalue', 'value')
+			local RFPu   = elementoTabla(RFP, 'qualifiers', 'P854',  1, 'datavalue', 'value')
+			local RFPi10 = elementoTabla(RFP, 'qualifiers', 'P854',  1, 'datavalue', 'value')
+			local RFPi13 = elementoTabla(RFP, 'qualifiers', 'P854',  1, 'datavalue', 'value')
+			local RFPfpp = elementoTabla(RFP, 'qualifiers', 'P577',  1, 'datavalue', 'value')
+			local RFPfp	= ''
+			if RFPfpp then
+				RFPfpp['precision'] = 9
+				RFPfp = require('Módulo:Wikidata/Fecha').FormateaFechaHora(RFPfpp, {['formatoFecha']='año', ['enlace']='no'})
+				if RFPfp then RFPfp = aPotencia(RFPfp) end
+			end
+
+			local RFPfa  = ''
+			local RFPfaa = elementoTabla(RFP, 'qualifiers', 'P813', 1, 'datavalue', 'value')
+			if RFPfaa then
+				RFPfaa['precision'] = 9
+				RFPfa = require('Módulo:Wikidata/Fecha').FormateaFechaHora(RFPfaa, {['formatoFecha']='año',['enlace']='no'})
+				if RFPfa then RFPfa = aPotencia(RFPfa) end
+			end
+
+			if RFPr and RFPa then
+				if RFPi10 or RFPi13 then
+					if RFPi10 then ISBN = RFPi10 end
+					if RFPi13 then ISBN = RFPi13 end
+					RangoFosilRef = frame:preprocess('<ref name=RangoFósil>{{cita libro|tíulo=' .. RFPr .. '|url=' .. RFPu .. '|autor=' .. RFPa .. 'fecha=' .. RFPfa  .. 'fechaacceso=' .. RFPfa .. '}}</ref>')
+				else
+					RangoFosilRef = frame:preprocess('<ref name=RangoFósil>{{cita web|tíulo=' .. RFPr .. '|url=' .. RFPu .. '|autor=' .. RFPa .. 'fecha=' .. RFPfa  .. 'fechaacceso=' .. RFPfa .. '}}</ref>')
+				end
+			end
+		end
+	end
+
+	if not RangoFosilUltimo then
+		local FRU = elementoTabla(Entidad, 'claims', 'P582', 1)
+		if FRU then
+			local FRUf			  = elementoTabla(FRU, 'mainsnak', 'datavalue', 'value')
+			if FRUf then
+				FRUf['precision'] = 9
+				RangoFosilUltimo  = require('Módulo:Wikidata/Fecha').FormateaFechaHora(FRUf, {['formatoFecha']='año',['enlace']='no'})
+				if RangoFosilUltimo then RangoFosilUltimo = aPotencia(RangoFosilUltimo) end
+			else
+				FRUf = ''
+			end
+		end
+	end
+
+	RangoFosil = {}
+	if type(RangoFosilPrimero) == 'number'	then table.insert(RangoFosil, '1=' .. RangoFosilPrimero:gsub(",", ".")) end
+	if type(RangoFosilUltimo) == 'number' and not RangoFosilPrimero == RangoFosilUltimo then table.insert(RangoFosil, '2=' .. RangoFosilUltimo:gsub(",", ".")) end
+	if RangoFosilPrefijo	then table.insert(RangoFosil, 'prefix=' .. RangoFosilPrefijo) end
+	if RangoFosilSufijo		then table.insert(RangoFosil, 'PS=' .. RangoFosilSufijo) end
+	if RangoFosilRef		then table.insert(RangoFosil, 'ref=' .. RangoFosilRef) end
+	
+	if next(RangoFosil) then
+		return frame:preprocess('[[Escala temporal geológica|Rango temporal]]: {{Rango fósil|'.. table.concat(RangoFosil, '|') ..'}}')
+	end
+end
+
+function obtenerMapaDistribucion()
+	local Valores = {}
+	local Objeto = elementoTabla(Entidad, 'claims', 'P181')
+	if Objeto then
+		for ok, imagen in pairs(Objeto) do
+			Valor		= '[[Archivo:' .. elementoTabla(imagen, 'mainsnak', 'datavalue', 'value') .. ']]'
+
+			Ubicacion	= {}
+			Continentes = elementoTabla(imagen, 'qualifiers', 'P30')
+			Paises		= elementoTabla(imagen, 'qualifiers', 'P17')
+
+			if Continentes then
+				for uk, ubicacion in pairs(Continentes) do
+					Continente = ModuloWikidata.obtenerEtiquetaWikidata(elementoTabla(ubicacion, 'datavalue', 'value', 'id'))
+					if Continente then table.insert(Ubicacion, Continente) end
+				end
+			elseif Paises then
+				for pk, ubicacion in pairs(Paises) do
+					Pais = ModuloWikidata.obtenerEtiquetaWikidata(elementoTabla(ubicacion, 'datavalue', 'value', 'id'))
+					if pais then table.insert(Ubicacion, Pais) end
+				end
+			end
+
+			if #Ubicacion > 0 then Valor = table.concat(Ubicacion, ',') .. '<br>' .. Valor end
+
+			table.insert(Valores, Valor)
+		end
+
+		table.concat(Valores, '<br>')
+	end
+end
+
+-- Función para obtener el peso, según el género (sexo) del taxón.
+function obtenerPeso()
+	local Peso			= argumentos{'peso'}
+	if Peso then
+		return Peso
+	else
+		local PesoMacho		= {}
+		local PesoHembra	= {}
+		local PesoInd		= {}
+
+		local PS = elementoTabla(Entidad, 'claims', 'P2067')
+		if PS then
+			for k,v in pairs(PS) do
+				Valor	= string.sub(elementoTabla(v, 'mainsnak', 'datavalue', 'value', 'amount'), 2)
+				Unidad	= elementoTabla(v, 'mainsnak', 'datavalue', 'value', 'unit')
+				Genero	= elementoTabla(v, 'qualifiers','P21', 1, 'datavalue', 'value', 'id')
+
+				if Unidad == 'http://www.wikidata.org/entity/Q11570' then
+					if Genero == 'Q44148' then
+						table.insert(PesoMacho, Valor)
+					elseif Genero == 'Q43445' then
+						table.insert(PesoHembra, Valor)
+					else
+						table.insert(PesoInd, Valor)
+					end
+				end
+			end
+
+			if PesoMacho then
+				if PesoMacho[1] then
+					if PesoMacho[2] then
+						if PesoMacho[1] > PesoMacho[2] then
+							PesoMachoO = PesoMacho[1] .. ' a ' .. PesoMacho[2] .. ' [[kg]] (machos)'
+						else
+							PesoMachoO = PesoMacho[2] .. ' a ' .. PesoMacho[1] .. ' [[kg]] (machos)'
+						end
+					else
+						PesoMachoO = PesoMacho[1] .. ' [[kg]] (machos)'
+					end
+				end
+			end
+
+			if PesoHembra then
+				if PesoHembra[1] then
+					if PesoHembra[2] then
+						if PesoHembra[1] < PesoHembra[2] then
+							PesoHembraO = PesoHembra[1] .. ' a ' .. PesoHembra[2] .. ' [[kg]] (hembras)'
+						else
+							PesoHembraO = PesoHembra[2] .. ' a ' .. PesoHembra[1] .. ' [[kg]] (hembras)'
+						end
+					else
+						PesoHembraO = PesoHembra[1] .. ' [[kg]] (hembras)'
+					end
+				end
+			end
+
+			if PesoInd then
+				if PesoInd[1] then
+					if PesoInd[2] then
+						if PesoInd[1] > PesoInd[2] then
+							PesoIndO = PesoInd[1] .. ' a ' .. PesoInd[2] .. ' [[kg]]'
+						else
+							PesoIndO = PesoInd[2] .. ' a ' .. PesoInd[1] .. ' [[kg]]'
+						end
+					else
+						PesoIndO = PesoInd[1] .. ' [[kg]]'
+					end
+				end
+			end
+
+			if PesoIndO then
+				return PesoIndO
+			end
+
+			if PesoMachoO and PesoHembraO then
+				return PesoMachoO .. '<br>\n' .. PesoHembraO
+			end
+
+			if PesoMachoO and not PesoHembraO then
+				return PesoMacho
+			end
+
+			if PesoHembraO and not PesoMachoO then
+				return PesoHembraO
+			end
+		end
+	end
+end
+
+-- Esta función abrevia cada pala excepto la última
+function abreviar(str)
+	if not str then return false end
+
+	local strAbbr = str:gsub("(%w)%S+%s*","%1\. "):sub(1, -4)
+
+	local strLast
+	for v in str:gmatch("%S+") do
+		strLast = v
+	end
+
+	if strAbbr and strLast then
+		return strAbbr .. strLast
+	end
+end
+
+-- Función para dividir un número en potencias de 10 (por defecto num / 10^6)
+function aPotencia(num, potencia)
+	if not num then return false end
+	if not potencia then potencia = 6 end
+	num = tostring(num)
+	num = num:gsub('%D','')
+    num = tonumber(num)
+    num = tostring(num / math.pow(10,potencia))
+    return formatoNumero(num)
+end
+
+-- Función, propiedad() personalizada
+function propiedad(idPropiedad, opciones, entidad)
+	if not entidad then entidad = Entidad end
+
+	if entidad and entidad.claims and entidad.claims[idPropiedad] then
+		if not opciones then
+			opciones = {['linkback']='sí'}
+		end
+		
+		opciones['idioma'] = 'es'
+
+		local Obj = (function()
+			local ValorPosicional = 1
+			if type(opciones['valor_posicional']) == 'number' then ValorPosicional = opciones['valor_posicional'] end
+			
+			local ValorPosicionalCalif = 1
+			if type(opciones['valor_posicional_calif']) == 'number' then ValorPosicional = opciones['valor_posicional_calif'] end
+	
+			local Calificador = opciones['calificador']
+		
+			local Obj = elementoTabla(Entidad, 'claims', idPropiedad, ValorPosicional)
+			if Calificador then
+				Obj = elementoTabla(Obj, 'qualifiers', Calificador, ValorPosicionalCalif)
+			else
+				Obj = elementoTabla(Obj, 'mainsnak')
+			end
+
+			return Obj
+		end)()
+
+		if opciones['formato'] == 'número' then
+			if elementoTabla(Obj, 'datavalue', 'type') == 'quantity' then
+				return formatoNumero(elementoTabla(Obj, 'mainsnak', 'datavalue', 'value', 'amount'))
+			end
+
+		-- Valores cuya unidad deba ir a la derecha, separada de un espacio
+		elseif opciones['formato'] == 'unidad' then
+			if elementoTabla(Entidad, 'claims', idPropiedad, 2, 'mainsnak', 'datavalue') then
+				return formatoNumero(elementoTabla(Entidad, 'claims', idPropiedad, 1, 'mainsnak', 'datavalue', 'value', 'amount')) .. '&nbsp;-&nbsp;' .. numeroUnidad(elementoTabla(Entidad, 'claims', idPropiedad, 2, 'mainsnak', 'datavalue'))
+			else
+				return numeroUnidad(elementoTabla(Entidad, 'claims', idPropiedad, 1, 'mainsnak', 'datavalue'))
+			end
+			
+		-- Valores cuya unidad deba ir a la izquierda (ej, las monedas o divisas)
+		elseif opciones['formato'] == 'moneda' then
+			if elementoTabla(Entidad, 'claims', idPropiedad, 2, 'mainsnak', 'datavalue') then
+				return numeroUnidad(elementoTabla(Entidad, 'claims', idPropiedad, 1, 'mainsnak', 'datavalue'), false) .. '&nbsp;-&nbsp;' .. numeroUnidad(elementoTabla(Entidad, 'claims', idPropiedad, 2, 'mainsnak', 'datavalue'), false)
+			else
+				return numeroUnidad(elementoTabla(Entidad, 'claims', idPropiedad, 1, 'mainsnak', 'datavalue'), false)
+			end
+		
+		-- Devolver el ID de la entidad, para propiedades de entidad
+		elseif opciones['formato'] == 'entidadID' then
+			return elementoTabla(Obj, 'datavalue', 'value', 'id')
+		end
+
+		-- Invocar a la función fallback si no se cumplen las condiciones anteriores
+		opciones.entityId  = entidad.id
+		opciones.propiedad = idPropiedad
+		return ModuloWikidata.getPropiedad(opciones, entidad.claims[idPropiedad])
+	end
+end
+
+return p
