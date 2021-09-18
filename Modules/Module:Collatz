@@ -10,18 +10,18 @@ local Template		= 'Graph:Chart' -- https://www.wikidata.org/wiki/Q20113709#sitel
 local StartLegend	= 'Start'
 
 function p.main(frame)
-	local start		= tonumber(frame.args.start) or 27		-- Max start number
+	local MaxStart	= tonumber(frame.args.start) or 27		-- Max start number
 	local width		= tonumber(frame.args.width) or 800		-- Graph width
 	local height	= tonumber(frame.args.height) or 600	-- Graph height
 	
-	if type(start) == 'number' then
-		if start < 1000 then -- More than 1000 will cause memory issues
+	if type(MaxStart) == 'number' then
+		if MaxStart < 1000 then -- More than 1000 will cause memory issues
 			local Data		= {}
 			local Highest	= {}
 			local Tags		= {}
 	
 			table.insert(Tags, '|legend=' .. StartLegend)
-		    for num = 1,start,1 do
+		    for num = 1,MaxStart,1 do
 		    	local Values = Collatz(num)
 		    	table.insert(Highest, #Values)
 		    	table.insert(Data, '|y'..num..'=' .. Values)
