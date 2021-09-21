@@ -10,52 +10,54 @@ local Template		= 'Graph:Chart' -- https://www.wikidata.org/wiki/Q20113709#sitel
 local StartLegend	= 'Start'
 
 function p.main(frame)
-	local MaxStart	= math.floor(tonumber(frame.args.start)) or 27		-- Max start number
-	local width		= math.floor(tonumber(frame.args.width)) or 800		-- Graph width
-	local height	= math.floor(tonumber(frame.args.height)) or 600	-- Graph height
+	local MaxStart	= math.floor(tonumber(frame.args.start)  or 27)		-- Max start number
+	local width		= math.floor(tonumber(frame.args.width)  or 800)	-- Graph width
+	local height	= math.floor(tonumber(frame.args.height) or 600)	-- Graph height
 	
-	if type(MaxStart) == 'number' then
-		if math.floor(MaxStart) < 1000 then -- More than 1000 will cause memory issues
-			local Data		= {}
-			local Highest	= {}
-			local Tags		= {}
-	
-			table.insert(Tags, '|legend=' .. StartLegend)
-		    for num = 1,MaxStart,1 do
-		    	local Values = Collatz(num)
-		    	table.insert(Highest, #Values)
-		    	table.insert(Data, '|y'..num..'=' .. Values)
-		    	table.insert(Tags, '|y'..num..'Title=' .. num)
-		    end
-		    table.sort(Highest)
-		    Highest = Highest[#Highest]
+	if MaxStart < 1000 then -- More than 1000 will cause memory issues
+		local Data		= {}
+		local Highest	= {}
+		local Tags		= {}
 
-		    local axisX = {}
-		    for v = 0, Highest, 1 do
-		    	table.insert(axisX, v)
-		    end
-		    axisX = table.concat(axisX, ',')
-		    axisY = table.concat(Data)
-		    
-		    if #Tags > 40 then Tags = {} end
-		    Tags = table.concat(Tags)
-		    
-			return frame:preprocess('{{' .. Template .. '|type=line|width='.. width .. '|height='.. height .. '|x='.. axisX .. axisY .. Tags .. '}}')
+		table.insert(Tags, '|legend=' .. StartLegend)
+	    for num = 1,MaxStart,1 do
+	    	local Values = Collatz(num)
+	    	table.insert(Highest, #Values)
+	    	table.insert(Data, '|y'..num..'=' .. Values)
+	    	table.insert(Tags, '|y'..num..'Title=' .. num)
+	    end
+	    table.sort(Highest)
+	    Highest = Highest[#Highest]
+
+	    local axisX = {}
+	    for v = 0, Highest, 1 do
+	    	table.insert(axisX, v)
+	    end
+	    axisX = table.concat(axisX, ',')
+	    axisY = table.concat(Data)
+	    
+	    if #Tags > 40 then Tags = {} end
+	    Tags = table.concat(Tags)
+	    
+	    if width and height and axisX and axisY and Tags then
+			return frame:preprocess('{{' .. Template .. '|width='.. width .. '|height='.. height .. '|x='.. axisX .. axisY .. Tags .. '}}')
 		end
 	end
+	return '<span class="error">Se ha proporcionado un número de inicio mayor al permitido</span>'
 end
 
 function Collatz(num)
     if type(num) == 'number' then
-    	if math.floor(num) > 0 then
-	        local Values = {(math.floor(num))}
+    	num = math.floor(num)
+    	if num > 0 then
+	        local Values = {num}
 	        while(num > 1) do
 	            if (num % 2 == 0) then
 	                num = (num / 2)
 	            else
 	                num = (num * 3 + 1)
 	            end
-	            table.insert(Values, (math.floor(num)))
+	            table.insert(Values, num)
 	          
 	        end
 	        return table.concat(Values, ',')
